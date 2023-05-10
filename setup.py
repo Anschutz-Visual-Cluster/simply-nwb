@@ -15,6 +15,7 @@ with open('./README.rst') as f:
 setup(
     name='simply_nwb',
     packages=['simply_nwb', 'simply_nwb.tools', 'simply_nwb.transforms'],
+    scripts=['simply_nwb/nwb_inspect'],
     version=VERSION,
     description='Common NWB use cases and simplified interface for common usage',
     author='Spencer Hanson',
