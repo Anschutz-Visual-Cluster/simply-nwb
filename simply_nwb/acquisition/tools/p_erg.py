@@ -1,6 +1,8 @@
 import pandas as pd
 from io import StringIO
 
+from simply_nwb.util import warn_on_name_format
+
 
 def _format_column_name(column_name):
     """
@@ -85,11 +87,11 @@ def _parse_perg_data(filename):
 
 def parse_perg_to_table(filename=None, reformat_column_names=True):
     """
-    Parse the output of a pERG reading into a Pandas dataframe
+    Parse the output of a pERG reading into a dict
 
     :param filename: filename of the pERG data to parse
     :param reformat_column_names: reformat the column names, e.g 'Data Pnt(ms):' -> 'data_pnt_ms'
-    :return: Pandas dataframe
+    :return: dict of data
     """
     if filename is None:
         raise ValueError("Filename cannot be none for pERG data parse!")
@@ -100,5 +102,10 @@ def parse_perg_to_table(filename=None, reformat_column_names=True):
     if reformat_column_names:
         panda_data = _reformat_column_names(panda_data)
         panda_metadata = _reformat_column_names(panda_metadata)
+    else:
+        [warn_on_name_format(col, f"for pERG data '{filename}' consider using reformat_column_names=True") for col in panda_metadata.columns]
+        [warn_on_name_format(col, f"for pERG metadata '{filename}' consider using reformat_column_names=True") for col in panda_data.columns]
 
-    return panda_data, panda_metadata
+    data_dict = {col: panda_data[col].to_numpy() for col in panda_data.columns}
+    metadata_dict = {col: panda_metadata[col].to_numpy() for col in panda_metadata.columns}
+    return data_dict, metadata_dict

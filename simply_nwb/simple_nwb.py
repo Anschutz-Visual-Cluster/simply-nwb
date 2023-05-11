@@ -1,4 +1,7 @@
 from uuid import uuid4
+import os
+import sys
+import glob
 
 from hdmf.common.table import DynamicTable
 from hdmf.common.table import VectorData
@@ -6,7 +9,8 @@ from pynwb import NWBFile
 from pynwb.device import Device
 from pynwb.ecephys import ElectrodeGroup
 from pynwb.file import Subject
-from .tools import blackrock_all_spiketrains, parse_perg_to_table
+from .acquisition.tools import blackrock_all_spiketrains, parse_perg_to_table
+from .util import warn_on_name_format
 
 
 class SimpleNWB(object):
@@ -162,9 +166,43 @@ class SimpleNWB(object):
         # Add all spiketrains as units to the NWB
         [self._nwbfile.add_unit(spike_times=spike) for spike in blackrock_spiketrains]
 
+    def add_p_erg_folder(self, foldername=None, file_pattern=None, table_name=None, reformat_column_names=True):
+        """
+        Add pERG data for each file into the NWB, from 'foldername' that matches 'file_pattern' into the NWB
+        Example 'file_pattern' "*txt"
+        :param foldername: folder where  the pERG datas are
+        :param file_pattern: glob filepattern for selecting file e.g '*.txt'
+        :param table_name: name of new table to insert the data into in the NWB
+        :param reformat_column_names: Reformat column names to a nicer format from raw
+        :return:
+        """
+        if foldername is None:
+            raise ValueError("Must provide folder name argument!")
+        if file_pattern is None:
+            raise ValueError("Must provide file_pattern! Example: '*.txt'")
+        if table_name is None:
+            raise ValueError("Must provide 'table_name' to store data!")
+
+        if not os.path.exists(foldername):
+            raise ValueError(f"Provided foldername '{foldername}' doesn't exist in current working directory: '{os.getcwd()}'!")
+        if not os.path.isdir(foldername):
+            raise ValueError(f"Provided foldername '{foldername}' isn't a folder!")
+
+        pattern = os.path.join(foldername, file_pattern)
+        files = glob.glob(pattern)
+        if not files:
+            raise ValueError(f"No files found matching pattern '{pattern}")
+        for filename in files:
+            self.add_p_erg_data(
+                filename=filename,
+                table_name=table_name,
+                reformat_column_names=reformat_column_names
+            )
+
     def add_p_erg_data(self, filename=None, table_name=None, reformat_column_names=True):
         """
         Add pERG data into the NWB, from file, formatting it
+
         :param filename: filename of the pERG data to read
         :param table_name: name of new table to insert the data into in the NWB
         :param reformat_column_names: Reformat column names to a nicer format from raw
@@ -174,34 +212,43 @@ class SimpleNWB(object):
             raise ValueError("Invalid filename! Must provide argument")
         if table_name is None:
             raise ValueError("Must provide a name for the pERG table data!")
+        warn_on_name_format(table_name)
 
-        data_table, metadata_table = parse_perg_to_table(filename, reformat_column_names=reformat_column_names)
+        data_dict, metadata_dict = parse_perg_to_table(filename, reformat_column_names=reformat_column_names)
+        data_dict_name = f"{table_name}_data"
+        metadata_dict_name = f"{table_name}_metadata"
 
-        self.nwbfile.add_acquisition(DynamicTable(
-            name=f"{table_name}_data",
-            description=f"pERG data from '{filename}'",
-            columns=[
-                VectorData(
-                    name=data_table.columns[i],
-                    data=data_table[data_table.columns[i]].to_numpy(),
-                    description=data_table.columns[i]
-                )
-                for i in range(0, len(data_table.columns))
-            ]
-        ))
+        if data_dict_name in self.nwbfile.acquisition:
+            self.nwbfile.acquisition[data_dict_name].add_row(data_dict)
+        else:
+            self.nwbfile.add_acquisition(DynamicTable(
+                name=data_dict_name,
+                description="pERG data",
+                columns=[
+                    VectorData(
+                        name=column,
+                        data=[data_dict[column]],
+                        description=column
+                    )
+                    for column in data_dict.keys()
+                ]
+            ))
 
-        self.nwbfile.add_acquisition(DynamicTable(
-            name=f"{table_name}_metadata",
-            description=f"pERG metadata from '{filename}'",
-            columns=[
-                VectorData(
-                    name=metadata_table.columns[i],
-                    data=metadata_table[metadata_table.columns[i]].to_numpy(),
-                    description=metadata_table.columns[i]
-                )
-                for i in range(0, len(metadata_table.columns))
-            ]
-        ))
+        if metadata_dict_name in self.nwbfile.acquisition:
+            self.nwbfile.acquisition[metadata_dict_name].add_row(metadata_dict)
+        else:
+            self.nwbfile.add_acquisition(DynamicTable(
+                name=metadata_dict_name,
+                description="pERG metadata",
+                columns=[
+                    VectorData(
+                        name=column,
+                        data=[metadata_dict[column]],
+                        description=column
+                    )
+                    for column in metadata_dict.keys()
+                ]
+            ))
 
     def _get_nwbfile(self):
         if self._nwbfile is None:

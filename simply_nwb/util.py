@@ -1,4 +1,6 @@
 from pynwb import NWBHDF5IO
+import warnings
+import re
 
 
 def read_nwb(filename):
@@ -22,3 +24,21 @@ def write_nwb(nwb_obj, filename):
     io = NWBHDF5IO(filename, mode="w")
     io.write(nwb_obj)
     io.close()
+
+
+def warn_on_name_format(name_value, context_str=""):
+    """
+    Send a warning if the name format isn't in 'snake_case'
+    :param name_value: value to check
+    :param context_str: Extra string to put in warning message
+    :return: True if passes, False otherwise
+    """
+    is_snake = True
+    is_snake = name_value.lower() == name_value and is_snake
+    # Check for any characters other than 'a-z' '_' and '0-9'
+    is_snake = not bool(re.findall("[^a-z_0-9]", name_value)) and is_snake
+
+    if not is_snake:
+        warnings.warn(f"Name '{name_value} isn't in snake_case! {context_str}", UserWarning)
+        return False
+    return True

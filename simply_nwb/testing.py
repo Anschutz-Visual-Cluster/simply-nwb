@@ -1,6 +1,6 @@
 from pynwb.file import Subject
 
-from simply_nwb.tools import blackrock_load_data, blackrock_all_spiketrains
+from simply_nwb.acquisition.tools import blackrock_load_data, blackrock_all_spiketrains
 from simply_nwb import SimpleNWB
 import pendulum
 
@@ -77,11 +77,25 @@ def simple_nwb_nev():
 
 def nwb_perg():
     snwb = gen_snwb()
-    snwb.add_p_erg_data(perg_filename, "perg table")
+    snwb.add_p_erg_data(perg_filename, "perg_table")
+    snwb.add_p_erg_data(perg_filename, "perg_table")
+
+    # snwb.add_p_erg_data(perg_filename, "perg_table", reformat_column_names=False)
+    tw = 2
+
+
+def nwb_perg_folder():
+    snwb = gen_snwb()
+    snwb.add_p_erg_folder(
+        foldername="../data/pg_folder",
+        file_pattern="*.txt",
+        table_name="p_ergs",
+    )
     tw = 2
 
 
 if __name__ == "__main__":
     # blackrock()
     # simple_nwb_nev()
-    nwb_perg()
+    # nwb_perg()
+    nwb_perg_folder()
