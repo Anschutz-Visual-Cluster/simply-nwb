@@ -1,3 +1,4 @@
+from nwbinspector import inspect_nwbfile, inspect_nwbfile_object
 from pynwb import NWBHDF5IO
 import warnings
 import re
@@ -42,3 +43,21 @@ def warn_on_name_format(name_value, context_str=""):
         warnings.warn(f"Name '{name_value} isn't in snake_case! {context_str}", UserWarning)
         return False
     return True
+
+
+def inspect_nwb_file(filename):
+    """
+    Return the inspection list of a given NWB file
+    :param filename: filename of the NWB to inspect
+    :return: list of inspection objects for the given NWB, if empty, no issues found
+    """
+    return list(inspect_nwbfile(nwbfile_path=filename))
+
+
+def inspect_nwb_obj(obj):
+    """
+    Return the inspection list of a given NWB object
+    :param obj: NWBFile object to inspect
+    :return: list of inspection objects, if empty no issues were found
+    """
+    return list(inspect_nwbfile_object(obj))

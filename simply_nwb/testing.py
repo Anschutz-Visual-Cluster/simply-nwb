@@ -4,11 +4,12 @@ from simply_nwb.acquisition.tools import blackrock_load_data, blackrock_all_spik
 from simply_nwb import SimpleNWB
 import pendulum
 
+
 blackrock_nev_filename = "../data/wheel_4p3_lSC_2001.nev"
 perg_filename = "../data/pg1_A_raw.TXT"
 
 
-def blackrock():
+def blackrock_util_funcs():
     d = blackrock_load_data(blackrock_nev_filename)
     d2 = blackrock_all_spiketrains(blackrock_nev_filename)
     tw = 2
@@ -19,7 +20,7 @@ def gen_snwb():
         # Required
         session_description="Poked mouse with a stick",
         session_start_time=pendulum.now(),
-        experimenter=["Joe Schmoe"],
+        experimenter=["Schmoe, Joe"],
         lab="Felsen Lab",
         experiment_description="Poked a mouse with sticks to see if they would react",
 
@@ -71,8 +72,7 @@ def simple_nwb_nev():
         device_name="BlackRock#4",
         electrode_group_name="electrodegroup0"
     )
-
-    tw = 2
+    return snwb
 
 
 def nwb_perg():
@@ -81,7 +81,7 @@ def nwb_perg():
     snwb.add_p_erg_data(perg_filename, "perg_table")
 
     # snwb.add_p_erg_data(perg_filename, "perg_table", reformat_column_names=False)
-    tw = 2
+    return snwb
 
 
 def nwb_perg_folder():
@@ -91,11 +91,13 @@ def nwb_perg_folder():
         file_pattern="*.txt",
         table_name="p_ergs",
     )
-    tw = 2
+    return snwb
 
 
 if __name__ == "__main__":
-    # blackrock()
-    # simple_nwb_nev()
-    # nwb_perg()
-    nwb_perg_folder()
+    blackrock_util_funcs()
+
+    assert not gen_snwb().inspect()
+    assert not simple_nwb_nev().inspect()
+    assert not nwb_perg().inspect()
+    assert not nwb_perg_folder().inspect()

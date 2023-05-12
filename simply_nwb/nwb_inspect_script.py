@@ -1,4 +1,4 @@
-from nwbinspector import inspect_nwbfile
+from simply_nwb.util import inspect_nwb_file
 from nwbinspector.inspector_tools import format_messages
 import sys
 
@@ -6,7 +6,7 @@ import sys
 def main():
     filename_arg = " ".join(sys.argv[1:])
     print(f"Inspecting file: '{filename_arg}'")
-    res = list(inspect_nwbfile(nwbfile_path=filename_arg))
+    res = inspect_nwb_file(filename_arg)
     print("\n".join(format_messages(res, levels=["importance", "file_path"])))
     if not res:
         print("PASSED!")

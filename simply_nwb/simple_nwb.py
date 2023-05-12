@@ -10,7 +10,7 @@ from pynwb.device import Device
 from pynwb.ecephys import ElectrodeGroup
 from pynwb.file import Subject
 from .acquisition.tools import blackrock_all_spiketrains, parse_perg_to_table
-from .util import warn_on_name_format
+from .util import warn_on_name_format, inspect_nwb_obj
 
 
 class SimpleNWB(object):
@@ -63,14 +63,20 @@ class SimpleNWB(object):
                 "session_start_time": session_start_time,
                 "experimenter": experimenter,
                 "lab": lab,
+                "subject": subject,
                 "experiment_description": experiment_description,
                 "session_id": session_id,
                 "institution": institution,
-                "keywords": keywords
+                "keywords": keywords,
+                "related_publications": related_publications
             }
 
             self._nwbfile = None
             self._get_nwbfile()  # Generate nwbfile from args
+
+    def inspect(self):
+        results = inspect_nwb_obj(self.nwbfile)
+        return results
 
     def blackrock_spiketrains_as_units(
             self,

@@ -1,6 +1,6 @@
 from setuptools import setup
 
-VERSION = "0.0.1"
+VERSION = "0.0.3"
 
 
 def parse_requirements(requirement_file):
@@ -14,8 +14,7 @@ with open('./README.rst') as f:
 
 setup(
     name='simply_nwb',
-    packages=['simply_nwb', 'simply_nwb.tools', 'simply_nwb.transforms'],
-    scripts=['simply_nwb/nwb_inspect'],
+    packages=['simply_nwb', 'simply_nwb.acquisition', 'simply_nwb.acquisition.tools', 'simply_nwb.transforms'],
     version=VERSION,
     description='Common NWB use cases and simplified interface for common usage',
     author='Spencer Hanson',
