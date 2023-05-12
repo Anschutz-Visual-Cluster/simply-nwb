@@ -108,7 +108,6 @@ class SimpleNWB(object):
         :param electrode_brain_region: the location of electrode within the subject, brain region (required)
         :param electrode_filtering_description: description of hardware filtering, including the filter name and frequency cutoffs (required)
         :param electrode_reference_description: Description of the reference electrode and/or reference scheme used for this electrode, e.g.,"stainless steel skull screw" or "online common average referencing" (required)
-
         :param device_name: Name of the device used (optional)
         :param device_manufacturer: device manufacturer, will default to "BlackRock" (optional)
         :param electrode_group_name: name for the group of this electrode (optional)
@@ -175,12 +174,14 @@ class SimpleNWB(object):
     def add_p_erg_folder(self, foldername=None, file_pattern=None, table_name=None, reformat_column_names=True):
         """
         Add pERG data for each file into the NWB, from 'foldername' that matches 'file_pattern' into the NWB
-        Example 'file_pattern' "*txt"
+        Example 'file_pattern' "\*txt"
+
+
         :param foldername: folder where  the pERG datas are
-        :param file_pattern: glob filepattern for selecting file e.g '*.txt'
+        :param file_pattern: glob filepattern for selecting file e.g '\*.txt'
         :param table_name: name of new table to insert the data into in the NWB
         :param reformat_column_names: Reformat column names to a nicer format from raw
-        :return:
+        :return: None
         """
         if foldername is None:
             raise ValueError("Must provide folder name argument!")
