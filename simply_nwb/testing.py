@@ -1,5 +1,6 @@
 from pynwb.file import Subject
 
+from acquisition.tools.labjack import get_labjack_data
 from simply_nwb.acquisition.tools import blackrock_load_data, blackrock_all_spiketrains
 from simply_nwb import SimpleNWB
 import pendulum
@@ -7,6 +8,7 @@ import pendulum
 
 blackrock_nev_filename = "../data/wheel_4p3_lSC_2001.nev"
 perg_filename = "../data/pg1_A_raw.TXT"
+labjack_filename = "../data/labjack_data.dat"
 
 
 def blackrock_util_funcs():
@@ -35,15 +37,6 @@ def gen_snwb():
             # NCBI Taxonomy link or Latin Binomial (e.g.'Rattus norvegicus')
             "species": "http://purl.obolibrary.org/obo/NCBITaxon_10116",
         }),
-        # subject={
-        #     "subject_id": "1",
-        #     "age": "P90D",  # ISO-8601 for 90 days duration
-        #     "strain": "TypeOfMouseGoesHere",  # If no specific used, 'Wild Strain'
-        #     "description": "Mouse#1 idk",
-        #     "sex": "M",  # M - Male, F - Female, U - unknown, O - other
-        #     # NCBI Taxonomy link or Latin Binomial (e.g.'Rattus norvegicus')
-        #     "species": "http://purl.obolibrary.org/obo/NCBITaxon_10116",
-        # },
         session_id="Session1",
         institution="CU Anschutz",
         keywords=["mouse"],
@@ -94,10 +87,19 @@ def nwb_perg_folder():
     return snwb
 
 
+def nwb_labjack():
+    # Not a true .dat file, should be .txt but whatever
+    r = get_labjack_data(labjack_filename)
+    tw = 2
+    raise NotImplemented
+    pass
+
+
 if __name__ == "__main__":
     blackrock_util_funcs()
 
-    assert not gen_snwb().inspect()
-    assert not simple_nwb_nev().inspect()
-    assert not nwb_perg().inspect()
-    assert not nwb_perg_folder().inspect()
+    # assert not gen_snwb().inspect()
+    # assert not simple_nwb_nev().inspect()
+    # assert not nwb_perg().inspect()
+    # assert not nwb_perg_folder().inspect()
+    assert not nwb_labjack().inspect()
