@@ -37,7 +37,7 @@ def _get_labjack_meta_lines(meta_lines):
     return pd.DataFrame.from_records(rows, columns=col_headers)
 
 
-def get_labjack_data(filename=None):
+def labjack_load_file(filename=None):
     """
     Returns labjack data and labjack metadata from a given filename
     :param filename: file to parse

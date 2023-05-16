@@ -5,13 +5,12 @@ from simply_nwb.util import warn_on_name_format
 
 
 def _format_column_name(column_name):
-    """
-    Internal helper function to help rename columns
-    e.g. 'Data Pnt(ms):' -> 'data_pnt_ms'
+    # Internal helper function to help rename columns
+    # e.g. 'Data Pnt(ms):' -> 'data_pnt_ms'
+    #
+    # :param column_name: input column name
+    # :return: str of reformatted column name
 
-    :param column_name: input column name
-    :return: str of reformatted column name
-    """
     replacements = [
         # Turn ')' into a '_'
         # e.g. 'Data Pnt(ms):' -> 'Data Pnt_ms):'
@@ -30,6 +29,7 @@ def _format_column_name(column_name):
 
 
 def _parse_perg_metadata(filename):
+    # Helper func
     divider_count = 0
     line_datas = []
 
@@ -49,11 +49,10 @@ def _parse_perg_metadata(filename):
 
 
 def _reformat_column_names(panda_data):
-    """
-    Helper function to rename the columns in a pandas dataframe
-    :param panda_data: pd dataframe
-    :return: pd dataframe with different column names, formatted nicer
-    """
+    # Helper function to rename the columns in a pandas dataframe
+    # :param panda_data: pd dataframe
+    # :return: pd dataframe with different column names, formatted nicer
+
     rename_mapping = []
     for col_name in panda_data.columns:
         rename_mapping.append([col_name, _format_column_name(col_name)])
@@ -65,11 +64,10 @@ def _reformat_column_names(panda_data):
 
 
 def _parse_perg_data(filename):
-    """
-    Helper func to parse out only the data, a separate func will parse out metadata
-    :param filename: filename of the pERG file
-    :return: pandas dataframe
-    """
+    # Helper func to parse out only the data, a separate func will parse out metadata
+    # :param filename: filename of the pERG file
+    # :return: pandas dataframe
+
     last_header_idx = -1
     with open(filename, "r") as f:
         data = f.readlines()
@@ -85,7 +83,7 @@ def _parse_perg_data(filename):
         return pd.read_csv(StringIO("\n".join(data)))
 
 
-def parse_perg_to_table(filename=None, reformat_column_names=True):
+def perg_parse_to_table(filename=None, reformat_column_names=True):
     """
     Parse the output of a pERG reading into a dict
 

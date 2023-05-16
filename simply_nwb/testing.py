@@ -1,6 +1,9 @@
 from pynwb.file import Subject
 
-from acquisition.tools.labjack import get_labjack_data
+from acquisition.tools.mp4 import mp4_read_data
+from simply_nwb.acquisition.tools import csv_load_dataframe, yaml_read_file
+from simply_nwb.acquisition.tools import labjack_load_file
+from simply_nwb.acquisition.tools import plaintext_metadata_read
 from simply_nwb.acquisition.tools import blackrock_load_data, blackrock_all_spiketrains
 from simply_nwb import SimpleNWB
 import pendulum
@@ -9,6 +12,10 @@ import pendulum
 blackrock_nev_filename = "../data/wheel_4p3_lSC_2001.nev"
 perg_filename = "../data/pg1_A_raw.TXT"
 labjack_filename = "../data/labjack_data.dat"
+labjack_filename2 = "../data/labjack_data2.dat"
+metadata_filename = "../data/metadata.txt"
+yaml_filename = "../data/20230414_unitR2_session002_metadata.yaml"
+mp4_filename = "../data/mp4_test.mp4"
 
 
 def blackrock_util_funcs():
@@ -89,17 +96,46 @@ def nwb_perg_folder():
 
 def nwb_labjack():
     # Not a true .dat file, should be .txt but whatever
-    r = get_labjack_data(labjack_filename)
+    r = labjack_load_file(labjack_filename)
+    r2 = labjack_load_file(labjack_filename2)
+
     tw = 2
+    # TODO implement a 'add misc data' or something similar
     raise NotImplemented
     pass
 
 
+def plaintext_metadata_test():
+    r = plaintext_metadata_read(metadata_filename)
+    tw = 2
+
+
+def csv_test():
+    # Loads in well, but file isn't exactly in CSV format, still a test
+    csv_load_dataframe("../data/20230414_unitR2_session002_leftCam-0000DLC_resnet50_licksNov3shuffle1_1030000.csv")
+
+
+def yaml_test():
+    r = yaml_read_file(yaml_filename)
+    tw = 2
+
+
+def mp4_test():
+    r = mp4_read_data(mp4_filename)
+    tw = 2
+
+
 if __name__ == "__main__":
-    blackrock_util_funcs()
+    # blackrock_util_funcs()
+    # csv_test()
+    # plaintext_metadata_test()
+    # yaml_test()
+    mp4_test()
 
     # assert not gen_snwb().inspect()
     # assert not simple_nwb_nev().inspect()
     # assert not nwb_perg().inspect()
     # assert not nwb_perg_folder().inspect()
-    assert not nwb_labjack().inspect()
+
+    # assert not nwb_labjack().inspect()
+    pass

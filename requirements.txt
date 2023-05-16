@@ -4,3 +4,6 @@ neo ~= 0.12
 numpy
 pendulum
 pandas
+pyyaml
+#opencv-python-headless
+#Pillow

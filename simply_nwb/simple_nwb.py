@@ -9,7 +9,7 @@ from pynwb import NWBFile
 from pynwb.device import Device
 from pynwb.ecephys import ElectrodeGroup
 from pynwb.file import Subject
-from .acquisition.tools import blackrock_all_spiketrains, parse_perg_to_table
+from .acquisition.tools import blackrock_all_spiketrains, perg_parse_to_table
 from .util import warn_on_name_format, inspect_nwb_obj
 
 
@@ -221,7 +221,7 @@ class SimpleNWB(object):
             raise ValueError("Must provide a name for the pERG table data!")
         warn_on_name_format(table_name)
 
-        data_dict, metadata_dict = parse_perg_to_table(filename, reformat_column_names=reformat_column_names)
+        data_dict, metadata_dict = perg_parse_to_table(filename, reformat_column_names=reformat_column_names)
         data_dict_name = f"{table_name}_data"
         metadata_dict_name = f"{table_name}_metadata"
 
