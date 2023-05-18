@@ -11,6 +11,7 @@ def _get_framecount(movie):
         val = movie.get(cv2.CAP_PROP_FRAME_COUNT)
         if not val or val == 0:
             raise ValueError
+        return val
     except:
         # Return a really large number of frames, and reduce to actual later
         # only other way to get an accurate count of frames would be to read the entire file
@@ -31,12 +32,64 @@ def mp4_read_data(filename=None):
         raise ValueError(f"Cannot read first frame of mp4 file '{filename}'!")
 
     dtype = img_array.dtype
-    shape = img_array.shape
-    # TODO
+    shape = list(img_array.shape)
+    shape.insert(0, int(frames))
+    shape = tuple(shape)
+
+    count = 0
+
+    # data = np.load("ttmp4.npz", mmap_mode="r")
+    # with open("tt.tmp", "w") as _:
+    #     fn = "C:\\Users\\spenc\\AppData\\Local\\Temp\\tmpxjegou7p\\205b3930-36aa-4cc7-97aa-de3a266118d7"
+    #     mem_data = np.memmap(filename=fn, dtype=dtype, mode="r", shape=shape)
+    #     tw = 2
     with tempfile.TemporaryDirectory() as tmp_dirname:
         fn = os.path.join(tmp_dirname, str(uuid.uuid4()))
-        np.memmap(fn, dtype=dtype, mode="w+", shape=shape)
+        mem_data = np.memmap(filename=fn, dtype=dtype, mode="w+", shape=shape)
+        while True:
+            if count % 100000 == 0:
+                print(count)
+            mem_data[count] = img_array
+            read_success, img_array = movie.read()
+            if not read_success:
+                break
+            else:
+                count = count + 1
 
+        tw = 2
+        from pynwb.image import ImageSeries
+        from simply_nwb.testing import gen_snwb
+        from simply_nwb import SimpleNWB
+        from simply_nwb.util import write_nwb
+        from pynwb import TimeSeries
+        from pynwb.file import Subject
+        from hdmf.backends.hdf5.h5_utils import H5DataIO
+
+        from pynwb import NWBFile
+        import pendulum
+
+        sn = gen_snwb()
+
+        b = sn.create_processing_module(name="behavior", description="test desc")
+        i = TimeSeries(name="testimg", data=H5DataIO(data=mem_data[:], compression=True, chunks=True),
+                       unit="vals 0-255", rate=150.0)
+
+        b.add(i)
+        nwb_filename = f"ggmp4-{str(uuid.uuid4())}.nwb"
+        # rsr = sn.write(nwb_filename)
+        SimpleNWB.write(sn, nwb_filename)
+        # write_nwb(sn, nwb_filename)
+        tw = 2
+
+        from simply_nwb.util import read_nwb
+        from pynwb import NWBHDF5IO
+        io = NWBHDF5IO(nwb_filename, mode="r")
+        rr = io.read()
+        tw = 2
+        # print("Saving as compressed...")
+        # np.savez_compressed("ttmp4", mp4_file=mem_data[:count])
+        # tw = 2
+    tw = 2
     # import cv2
     # from PIL import Image
     # import pickle

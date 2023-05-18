@@ -30,7 +30,7 @@ def blackrock_util_funcs():
 
 
 def gen_snwb():
-    return SimpleNWB(
+    return SimpleNWB.create_nwb(
         # Required
         session_description="Poked mouse with a stick",
         session_start_time=pendulum.now(),
@@ -143,8 +143,8 @@ if __name__ == "__main__":
     # csv_test()
     # plaintext_metadata_test()
     # yaml_test()
-    # mp4_test()
-    tif_test()
+    mp4_test()
+    # tif_test()
 
     # assert not gen_snwb().inspect()
     # assert not simple_nwb_nev().inspect()

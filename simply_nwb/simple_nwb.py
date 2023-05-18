@@ -10,7 +10,7 @@ from pynwb.device import Device
 from pynwb.ecephys import ElectrodeGroup
 from pynwb.file import Subject
 from .acquisition.tools import blackrock_all_spiketrains, perg_parse_to_table
-from .util import warn_on_name_format, inspect_nwb_obj
+from .util import warn_on_name_format, inspect_nwb_obj, write_nwb
 
 
 class SimpleNWB(object):
@@ -22,8 +22,8 @@ class SimpleNWB(object):
         "experiment_description"
     ]
 
-    def __init__(
-            self,
+    @staticmethod
+    def create_nwb(
             session_description=None,
             session_start_time=None,
             experimenter=None,
@@ -57,7 +57,7 @@ class SimpleNWB(object):
             if keywords is None:
                 keywords = []
 
-            self.nwb_kwargs = {
+            nwb_kwargs = {
                 "identifier": identifier,
                 "session_description": session_description,
                 "session_start_time": session_start_time,
@@ -71,15 +71,16 @@ class SimpleNWB(object):
                 "related_publications": related_publications
             }
 
-            self._nwbfile = None
-            self._get_nwbfile()  # Generate nwbfile from args
+            return NWBFile(**nwb_kwargs)
 
-    def inspect(self):
-        results = inspect_nwb_obj(self.nwbfile)
+    @staticmethod
+    def inspect(nwbfile):
+        results = inspect_nwb_obj(nwbfile)
         return results
 
+    @staticmethod
     def blackrock_spiketrains_as_units(
-            self,
+            nwbfile,
             # Required args
             blackrock_filename=None,
             device_description=None,
@@ -156,7 +157,7 @@ class SimpleNWB(object):
             position=electrode_position
         )
 
-        self._nwbfile.add_electrode(
+        nwbfile.add_electrode(
             x=electrode_position[0],
             y=electrode_position[1],
             z=electrode_position[2],
@@ -169,9 +170,10 @@ class SimpleNWB(object):
 
         blackrock_spiketrains = blackrock_all_spiketrains(blackrock_filename)
         # Add all spiketrains as units to the NWB
-        [self._nwbfile.add_unit(spike_times=spike) for spike in blackrock_spiketrains]
+        [nwbfile.add_unit(spike_times=spike) for spike in blackrock_spiketrains]
 
-    def add_p_erg_folder(self, foldername=None, file_pattern=None, table_name=None, reformat_column_names=True):
+    @staticmethod
+    def add_p_erg_folder(nwbfile, foldername=None, file_pattern=None, table_name=None, reformat_column_names=True):
         """
         Add pERG data for each file into the NWB, from 'foldername' that matches 'file_pattern' into the NWB
         Example 'file_pattern' "\*txt"
@@ -200,13 +202,14 @@ class SimpleNWB(object):
         if not files:
             raise ValueError(f"No files found matching pattern '{pattern}")
         for filename in files:
-            self.add_p_erg_data(
+            nwbfile.add_p_erg_data(
                 filename=filename,
                 table_name=table_name,
                 reformat_column_names=reformat_column_names
             )
 
-    def add_p_erg_data(self, filename=None, table_name=None, reformat_column_names=True):
+    @staticmethod
+    def add_p_erg_data(nwbfile, filename=None, table_name=None, reformat_column_names=True):
         """
         Add pERG data into the NWB, from file, formatting it
 
@@ -225,10 +228,10 @@ class SimpleNWB(object):
         data_dict_name = f"{table_name}_data"
         metadata_dict_name = f"{table_name}_metadata"
 
-        if data_dict_name in self.nwbfile.acquisition:
-            self.nwbfile.acquisition[data_dict_name].add_row(data_dict)
+        if data_dict_name in nwbfile.acquisition:
+            nwbfile.acquisition[data_dict_name].add_row(data_dict)
         else:
-            self.nwbfile.add_acquisition(DynamicTable(
+            nwbfile.add_acquisition(DynamicTable(
                 name=data_dict_name,
                 description="pERG data",
                 columns=[
@@ -241,10 +244,10 @@ class SimpleNWB(object):
                 ]
             ))
 
-        if metadata_dict_name in self.nwbfile.acquisition:
-            self.nwbfile.acquisition[metadata_dict_name].add_row(metadata_dict)
+        if metadata_dict_name in nwbfile.acquisition:
+            nwbfile.acquisition[metadata_dict_name].add_row(metadata_dict)
         else:
-            self.nwbfile.add_acquisition(DynamicTable(
+            nwbfile.add_acquisition(DynamicTable(
                 name=metadata_dict_name,
                 description="pERG metadata",
                 columns=[
@@ -257,11 +260,9 @@ class SimpleNWB(object):
                 ]
             ))
 
-    def _get_nwbfile(self):
-        if self._nwbfile is None:
-            self._nwbfile = NWBFile(**self.nwb_kwargs)
-        return self._nwbfile
+    @staticmethod
+    def write(nwbfile, filename=None):
+        # TODO
+        return write_nwb(nwbfile, filename)
 
-    @property
-    def nwbfile(self):
-        return self._get_nwbfile()
+
