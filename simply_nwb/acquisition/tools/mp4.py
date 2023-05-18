@@ -19,7 +19,7 @@ def _get_framecount(movie):
 
 def mp4_read_data(filename=None):
     if not filename:
-        raise ValueError("Must provide filename arugment!")
+        raise ValueError("Must provide filename argument!")
     if not os.path.exists(filename):
         raise ValueError(f"Could not find file '{filename}'!")
 

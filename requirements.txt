@@ -5,5 +5,5 @@ numpy
 pendulum
 pandas
 pyyaml
-#opencv-python-headless
-#Pillow
+opencv-python-headless
+Pillow

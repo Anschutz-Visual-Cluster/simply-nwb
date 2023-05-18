@@ -8,7 +8,7 @@ from simply_nwb.acquisition.tools import blackrock_load_data, blackrock_all_spik
 from simply_nwb import SimpleNWB
 import pendulum
 
-
+# Data is available on Google Drive, as Spencer for access
 blackrock_nev_filename = "../data/wheel_4p3_lSC_2001.nev"
 perg_filename = "../data/pg1_A_raw.TXT"
 labjack_filename = "../data/labjack_data.dat"
