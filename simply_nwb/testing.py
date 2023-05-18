@@ -1,6 +1,7 @@
 from pynwb.file import Subject
 
 from acquisition.tools.mp4 import mp4_read_data
+from acquisition.tools.tif import tif_read_image, tif_read_directory, tif_read_subfolder_directory
 from simply_nwb.acquisition.tools import csv_load_dataframe, yaml_read_file
 from simply_nwb.acquisition.tools import labjack_load_file
 from simply_nwb.acquisition.tools import plaintext_metadata_read
@@ -16,6 +17,10 @@ labjack_filename2 = "../data/labjack_data2.dat"
 metadata_filename = "../data/metadata.txt"
 yaml_filename = "../data/20230414_unitR2_session002_metadata.yaml"
 mp4_filename = "../data/mp4_test.mp4"
+tif_foldername_folder_fmt = "../data/tifs/folder_formatted"
+tif_subfolder_kwargs = {"parent_folder": "../data/tifs/subfolder_formatted",
+                        "subfolder_glob": "file*", "file_glob": "Image.tif"}
+tif_single_filename = "../data/tifs/subfolder_formatted/file/Image.tif"
 
 
 def blackrock_util_funcs():
@@ -125,12 +130,21 @@ def mp4_test():
     tw = 2
 
 
+def tif_test():
+    r = tif_read_image(tif_single_filename)
+    # tif_foldername_and_subfolder_fmt = ("../data/tifs/subfolder_formatted", "file*")
+    rr = tif_read_subfolder_directory(**tif_subfolder_kwargs)
+    rrr = tif_read_directory(tif_foldername_folder_fmt, filename_glob="*ome.tif")
+    tw = 2
+
+
 if __name__ == "__main__":
     # blackrock_util_funcs()
     # csv_test()
     # plaintext_metadata_test()
     # yaml_test()
-    mp4_test()
+    # mp4_test()
+    tif_test()
 
     # assert not gen_snwb().inspect()
     # assert not simple_nwb_nev().inspect()

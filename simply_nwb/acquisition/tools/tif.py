@@ -1,0 +1,85 @@
+import os
+from PIL import Image
+import numpy as np
+import glob
+
+
+def tif_read_image(filename=None):
+    """
+    Read TIF Image into a numpy array
+    :param filename: TIF file to read
+    :return: numpy array
+    """
+
+    if not filename:
+        raise ValueError("Must supply filename argument!")
+    if not os.path.exists(filename):
+        raise ValueError(f"Filename '{filename}' not found!")
+
+    return np.array(Image.open(filename))
+
+
+def tif_read_directory(foldername=None, filename_glob="*.tif"):
+    """
+    Read a directory of TIF files, giving a filename glob for specific TIFs to grab
+    :param foldername: Folder that contains the TIF images, directly inside
+    :param filename_glob: naming scheme for the TIF files to be collected. e.g. 'image_*.tif'
+    :return: numpy array
+    """
+    if not foldername:
+        raise ValueError("Must provide folder name argument!")
+    if not os.path.exists(foldername):
+        raise ValueError(f"Folder '{foldername}' not found!")
+
+    files = glob.glob(os.path.join(foldername, filename_glob))
+    if not files:
+        raise ValueError(f"No files found with glob '{filename_glob}' in folder {foldername}!")
+    if any([os.path.isdir(ff) for ff in files]):
+        raise ValueError(f"Filename Glob '{filename_glob}' includes a directory!")
+
+    data = []
+    for file in files:
+        data.append(tif_read_image(file))
+    return data
+
+
+def tif_read_subfolder_directory(parent_folder=None, subfolder_glob=None, subfolder_glob_fail_on_file_found=False, file_glob=None):
+    """
+    Read a directory that contains folders that contain TIFs, and read each TIF from each subfolder into memory
+    :param parent_folder: main folder containing more folders
+    :param subfolder_glob: glob to specify which subfolders to look into e.g. 'folder_num_*'
+    :param subfolder_glob_fail_on_file_found: If the subfolder glob returns a file, fail the operation. Defaults to True and if a file is matched, it will ignore it
+    :param file_glob: TIF file glob to specify which TIFs from the subfolders to read, e.g. 'image0*.tif'
+    :return: numpy array
+    """
+    if not parent_folder:
+        raise ValueError("Must provide parent_folder argument!")
+    if not subfolder_glob:
+        raise ValueError("Must provide subfolder_glob argument!")
+    if not file_glob:
+        raise ValueError("Must provide file_glob argument!")
+
+    if not os.path.exists(parent_folder):
+        raise ValueError(f"Parent folder '{parent_folder}' not found!")
+
+    subfolders = glob.glob(os.path.join(parent_folder, subfolder_glob))
+
+    if subfolder_glob_fail_on_file_found and any([os.path.isfile(sf) for sf in subfolders]):
+        raise ValueError(f"Subfolder glob '{subfolder_glob}' returned a file!")
+
+    filenames = []
+    for subfolder in subfolders:
+        if os.path.isfile(subfolder):
+            continue
+
+        files = glob.glob(os.path.join(subfolder, file_glob))
+        if any([os.path.isdir(f) for f in files]):
+            raise ValueError(f"File glob '{file_glob}' returned a directory!")
+        filenames.extend(files)
+    if not filenames:
+        raise ValueError(f"No files found using subfolder glob '{subfolder_glob}' and file glob '{file_glob}'")
+
+    return np.array([tif_read_image(fn) for fn in filenames])
+
+
+
