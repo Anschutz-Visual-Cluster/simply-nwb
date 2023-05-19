@@ -1,3 +1,5 @@
+import warnings
+
 import numpy as np
 import pandas as pd
 import os
@@ -19,7 +21,7 @@ def _get_framecount(movie):
 
 
 def mp4_read_data(filename=None):
-    if not filename:
+    if filename is None:
         raise ValueError("Must provide filename argument!")
     if not os.path.exists(filename):
         raise ValueError(f"Could not find file '{filename}'!")
@@ -44,11 +46,14 @@ def mp4_read_data(filename=None):
     #     mem_data = np.memmap(filename=fn, dtype=dtype, mode="r", shape=shape)
     #     tw = 2
     with tempfile.TemporaryDirectory() as tmp_dirname:
+        print(tmp_dirname)
+
         fn = os.path.join(tmp_dirname, str(uuid.uuid4()))
         mem_data = np.memmap(filename=fn, dtype=dtype, mode="w+", shape=shape)
         while True:
-            if count % 100000 == 0:
+            if count % 50000 == 0:
                 print(count)
+                break  # TODO Remove this
             mem_data[count] = img_array
             read_success, img_array = movie.read()
             if not read_success:
@@ -71,7 +76,7 @@ def mp4_read_data(filename=None):
         sn = gen_snwb()
 
         b = sn.create_processing_module(name="behavior", description="test desc")
-        i = TimeSeries(name="testimg", data=H5DataIO(data=mem_data[:], compression=True, chunks=True),
+        i = TimeSeries(name="testimg", data=H5DataIO(data=mem_data[:5], compression=True, chunks=True),
                        unit="vals 0-255", rate=150.0)
 
         b.add(i)
@@ -80,11 +85,18 @@ def mp4_read_data(filename=None):
         SimpleNWB.write(sn, nwb_filename)
         # write_nwb(sn, nwb_filename)
         tw = 2
+        try:
+            mem_data.flush()
+            mem_data._mmap.close()
+            del mem_data
+        except:
+            warnings.warn("Couldn't close memory map!", ResourceWarning)
 
-        from simply_nwb.util import read_nwb
-        from pynwb import NWBHDF5IO
-        io = NWBHDF5IO(nwb_filename, mode="r")
-        rr = io.read()
+        # from simply_nwb.util import read_nwb
+        # from pynwb import NWBHDF5IO
+        # io = NWBHDF5IO(nwb_filename, mode="r")
+        # rr = io.read()
+        # io.close()
         tw = 2
         # print("Saving as compressed...")
         # np.savez_compressed("ttmp4", mp4_file=mem_data[:count])

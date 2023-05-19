@@ -3,14 +3,19 @@ import os
 import sys
 import glob
 
+import pandas as pd
+import pendulum
 from hdmf.common.table import DynamicTable
 from hdmf.common.table import VectorData
-from pynwb import NWBFile
+from pynwb import NWBFile, TimeSeries
+from pynwb.behavior import BehavioralEvents
 from pynwb.device import Device
 from pynwb.ecephys import ElectrodeGroup
 from pynwb.file import Subject
+
+from .acquisition.tools import labjack_load_file
 from .acquisition.tools import blackrock_all_spiketrains, perg_parse_to_table
-from .util import warn_on_name_format, inspect_nwb_obj, write_nwb
+from .util import warn_on_name_format, inspect_nwb_obj, write_nwb, panda_df_to_dyn_table, panda_df_to_list_of_timeseries
 
 
 class SimpleNWB(object):
@@ -75,8 +80,102 @@ class SimpleNWB(object):
 
     @staticmethod
     def inspect(nwbfile):
+        """
+        Inspect the given NWBFile
+        :param nwbfile: NWBFile object
+        :return: List of issues with the file, if empty, inspection passed
+        """
+
         results = inspect_nwb_obj(nwbfile)
         return results
+
+    @staticmethod
+    def write(nwbfile, filename=None):
+        """
+        Write the give NWBFile object to file
+        :param nwbfile: NWBFile object to write
+        :param filename: path to file to write, WILL OVERWRITE!
+        :return: None
+        """
+        write_nwb(nwbfile, filename)
+
+    @staticmethod
+    def labjack_as_behavioral_data(
+            nwbfile,
+            labjack_filename=None,
+            name=None,
+            measured_unit_list=None,
+            start_time=None,
+            sampling_rate=None,
+            description=None,
+            behavior_module=None,
+            behavior_module_name=None,
+            comments="Labjack behavioral data"
+    ):
+        """
+        Add LabJack data to the NWBFile as a behavioral entry
+
+        :param nwbfile: NWBFile to add the data to
+        :param labjack_filename: LabJack filename to read from
+        :param name: Name of this behavioral unit
+        :param measured_unit_list: List of SI unit strings corresponding to the columns of the labjack data
+        :param start_time: start time float
+        :param sampling_rate: sampling rate in Hz
+        :param description: description of the behavioral data
+        :param behavior_module: Optional NWB behavior module to add this data to, otherwise will create a new one e.g. nwbfile.processing["behavior"]
+        :param behavior_module_name: optional module name to add this behavior to, if exists will append. will ignore if behavior_module arg is supplied
+        :param comments: additional comments about the data
+        :return:
+        """
+        if name is None:
+            raise ValueError("Must provide name argument for labjack data!")
+        if start_time is None:
+            raise ValueError("Must provide start_time argument for labjack data!")
+        if not isinstance(start_time, float):
+            raise ValueError("start_time must be a float! For example, if using a whole number use 5.0 instead of 5")
+        if sampling_rate is None:
+            raise ValueError("Must provide sampling_rate argument for labjack data!")
+        if not isinstance(sampling_rate, float):
+            raise ValueError("start_time must be a float! For example, if using a whole number use 5.0 instead of 5")
+        if description is None:
+            raise ValueError("Must provide description argument for labjack data!")
+
+        labjack_data = labjack_load_file(labjack_filename)
+
+        timeseries_list = panda_df_to_list_of_timeseries(
+            pd_df=labjack_data["data"],
+            measured_unit_list=measured_unit_list,
+            start_time=start_time,
+            sampling_rate=sampling_rate,
+            description=description,
+            comments=comments
+        )
+
+        behavior_events = BehavioralEvents(
+            time_series=timeseries_list,
+            name=f"{name}_behavioral_events"
+        )
+
+        if not behavior_module:
+            if not behavior_module_name:
+                behavior_module_name = "behavior"  # Default name
+
+            if behavior_module_name in nwbfile.processing:
+                behavior_module = nwbfile.processing[behavior_module_name]
+            else:
+                behavior_module = nwbfile.create_processing_module(
+                    name=behavior_module_name,
+                    description="Behavior processing module"
+                )
+
+        behavior_module.add(behavior_events)
+        behavior_module.add(panda_df_to_dyn_table(
+            pd_df=labjack_data["metadata"],
+            table_name=f"{name}_metadata",
+            description="Labjack metadata"
+        ))
+
+        return nwbfile
 
     @staticmethod
     def blackrock_spiketrains_as_units(
@@ -100,6 +199,7 @@ class SimpleNWB(object):
         """
         Automatically parse a blackrock NEV file from spike trains into an NWB file
 
+        :param nwbfile: NWBFile object to add this data to
         :param blackrock_filename: Filename for the nev or nsX file of blackrock data (required)
         :param device_description: description of device (required)
         :param electrode_description: description of electrode used (required)
@@ -173,15 +273,17 @@ class SimpleNWB(object):
         [nwbfile.add_unit(spike_times=spike) for spike in blackrock_spiketrains]
 
     @staticmethod
-    def add_p_erg_folder(nwbfile, foldername=None, file_pattern=None, table_name=None, reformat_column_names=True):
+    def add_p_erg_folder(nwbfile, foldername=None, file_pattern=None, table_name=None, description=None,
+                         reformat_column_names=True):
         """
         Add pERG data for each file into the NWB, from 'foldername' that matches 'file_pattern' into the NWB
         Example 'file_pattern' "\*txt"
 
-
+        :param nwbfile: NWBFile object to add this data to
         :param foldername: folder where  the pERG datas are
         :param file_pattern: glob filepattern for selecting file e.g '\*.txt'
         :param table_name: name of new table to insert the data into in the NWB
+        :param description: Description of the data to add
         :param reformat_column_names: Reformat column names to a nicer format from raw
         :return: None
         """
@@ -191,9 +293,12 @@ class SimpleNWB(object):
             raise ValueError("Must provide file_pattern! Example: '*.txt'")
         if table_name is None:
             raise ValueError("Must provide 'table_name' to store data!")
+        if description is None:
+            raise ValueError("Must provide a description for the pERG data!")
 
         if not os.path.exists(foldername):
-            raise ValueError(f"Provided foldername '{foldername}' doesn't exist in current working directory: '{os.getcwd()}'!")
+            raise ValueError(
+                f"Provided foldername '{foldername}' doesn't exist in current working directory: '{os.getcwd()}'!")
         if not os.path.isdir(foldername):
             raise ValueError(f"Provided foldername '{foldername}' isn't a folder!")
 
@@ -202,19 +307,23 @@ class SimpleNWB(object):
         if not files:
             raise ValueError(f"No files found matching pattern '{pattern}")
         for filename in files:
-            nwbfile.add_p_erg_data(
+            SimpleNWB.add_p_erg_data(
+                nwbfile,
                 filename=filename,
                 table_name=table_name,
-                reformat_column_names=reformat_column_names
+                reformat_column_names=reformat_column_names,
+                description=description
             )
 
     @staticmethod
-    def add_p_erg_data(nwbfile, filename=None, table_name=None, reformat_column_names=True):
+    def add_p_erg_data(nwbfile, filename=None, table_name=None, description=None, reformat_column_names=True):
         """
         Add pERG data into the NWB, from file, formatting it
 
+        :param nwbfile: NWBFile object to add this data to
         :param filename: filename of the pERG data to read
         :param table_name: name of new table to insert the data into in the NWB
+        :param description: Description of the data to add
         :param reformat_column_names: Reformat column names to a nicer format from raw
         :return:
         """
@@ -222,6 +331,9 @@ class SimpleNWB(object):
             raise ValueError("Invalid filename! Must provide argument")
         if table_name is None:
             raise ValueError("Must provide a name for the pERG table data!")
+        if description is None:
+            raise ValueError("Must provide a description for the pERG data!")
+
         warn_on_name_format(table_name)
 
         data_dict, metadata_dict = perg_parse_to_table(filename, reformat_column_names=reformat_column_names)
@@ -233,7 +345,7 @@ class SimpleNWB(object):
         else:
             nwbfile.add_acquisition(DynamicTable(
                 name=data_dict_name,
-                description="pERG data",
+                description=description,
                 columns=[
                     VectorData(
                         name=column,
@@ -259,10 +371,3 @@ class SimpleNWB(object):
                     for column in metadata_dict.keys()
                 ]
             ))
-
-    @staticmethod
-    def write(nwbfile, filename=None):
-        # TODO
-        return write_nwb(nwbfile, filename)
-
-

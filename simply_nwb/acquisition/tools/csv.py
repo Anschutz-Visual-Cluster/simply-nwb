@@ -9,7 +9,7 @@ def csv_load_dataframe(filename=None, **kwargs):
     :param kwargs: extra args to pass to pandas.read_csv()
     :return: pandas.DataFrame
     """
-    if not filename:
+    if filename is None:
         raise ValueError("Must provide filename to load a CSV file!")
     if not os.path.exists(filename):
         raise ValueError(f"File '{filename}' not found in current working path '{os.getcwd()}")

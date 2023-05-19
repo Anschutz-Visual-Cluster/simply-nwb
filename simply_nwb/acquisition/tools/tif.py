@@ -11,7 +11,7 @@ def tif_read_image(filename=None):
     :return: numpy array
     """
 
-    if not filename:
+    if filename is None:
         raise ValueError("Must supply filename argument!")
     if not os.path.exists(filename):
         raise ValueError(f"Filename '{filename}' not found!")
@@ -26,13 +26,13 @@ def tif_read_directory(foldername=None, filename_glob="*.tif"):
     :param filename_glob: naming scheme for the TIF files to be collected. e.g. 'image_*.tif'
     :return: numpy array
     """
-    if not foldername:
+    if foldername is None:
         raise ValueError("Must provide folder name argument!")
     if not os.path.exists(foldername):
         raise ValueError(f"Folder '{foldername}' not found!")
 
     files = glob.glob(os.path.join(foldername, filename_glob))
-    if not files:
+    if files is None:
         raise ValueError(f"No files found with glob '{filename_glob}' in folder {foldername}!")
     if any([os.path.isdir(ff) for ff in files]):
         raise ValueError(f"Filename Glob '{filename_glob}' includes a directory!")
@@ -52,11 +52,11 @@ def tif_read_subfolder_directory(parent_folder=None, subfolder_glob=None, subfol
     :param file_glob: TIF file glob to specify which TIFs from the subfolders to read, e.g. 'image0*.tif'
     :return: numpy array
     """
-    if not parent_folder:
+    if parent_folder is None:
         raise ValueError("Must provide parent_folder argument!")
-    if not subfolder_glob:
+    if subfolder_glob is None:
         raise ValueError("Must provide subfolder_glob argument!")
-    if not file_glob:
+    if file_glob is None:
         raise ValueError("Must provide file_glob argument!")
 
     if not os.path.exists(parent_folder):

@@ -40,8 +40,9 @@ def _get_labjack_meta_lines(meta_lines):
 def labjack_load_file(filename=None):
     """
     Returns labjack data and labjack metadata from a given filename
+
     :param filename: file to parse
-    :return: data, metadata
+    :return: data dict 'data' dataframe, 'metadata' dataframe, 'date' datetime
     """
     if filename is None:
         raise ValueError("Must provide filename argument!")

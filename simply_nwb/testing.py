@@ -1,7 +1,7 @@
 from pynwb.file import Subject
 
-from acquisition.tools.mp4 import mp4_read_data
-from acquisition.tools.tif import tif_read_image, tif_read_directory, tif_read_subfolder_directory
+from simply_nwb.acquisition.tools import mp4_read_data
+from simply_nwb.acquisition.tools import tif_read_image, tif_read_directory, tif_read_subfolder_directory
 from simply_nwb.acquisition.tools import csv_load_dataframe, yaml_read_file
 from simply_nwb.acquisition.tools import labjack_load_file
 from simply_nwb.acquisition.tools import plaintext_metadata_read
@@ -9,9 +9,12 @@ from simply_nwb.acquisition.tools import blackrock_load_data, blackrock_all_spik
 from simply_nwb import SimpleNWB
 import pendulum
 
+from util import panda_df_to_dyn_table
+
 # Data is available on Google Drive, as Spencer for access
 blackrock_nev_filename = "../data/wheel_4p3_lSC_2001.nev"
 perg_filename = "../data/pg1_A_raw.TXT"
+perg_folder = "../data/pg_folder"
 labjack_filename = "../data/labjack_data.dat"
 labjack_filename2 = "../data/labjack_data2.dat"
 metadata_filename = "../data/metadata.txt"
@@ -21,9 +24,11 @@ tif_foldername_folder_fmt = "../data/tifs/folder_formatted"
 tif_subfolder_kwargs = {"parent_folder": "../data/tifs/subfolder_formatted",
                         "subfolder_glob": "file*", "file_glob": "Image.tif"}
 tif_single_filename = "../data/tifs/subfolder_formatted/file/Image.tif"
+# Note: This CSV isn't formatted correctly so it will look weird when loaded
+csv_filename = "../data/20230414_unitR2_session002_leftCam-0000DLC_resnet50_licksNov3shuffle1_1030000.csv"
 
 
-def blackrock_util_funcs():
+def blackrock_test():
     d = blackrock_load_data(blackrock_nev_filename)
     d2 = blackrock_all_spiketrains(blackrock_nev_filename)
     tw = 2
@@ -33,7 +38,8 @@ def gen_snwb():
     return SimpleNWB.create_nwb(
         # Required
         session_description="Poked mouse with a stick",
-        session_start_time=pendulum.now(),
+        # Subtract 1 year so we don't run into the 'NWB start time is at a greater date than current' issue
+        session_start_time=pendulum.now().subtract(years=1),
         experimenter=["Schmoe, Joe"],
         lab="Felsen Lab",
         experiment_description="Poked a mouse with sticks to see if they would react",
@@ -58,8 +64,9 @@ def gen_snwb():
 
 
 def simple_nwb_nev():
-    snwb = gen_snwb()
-    snwb.blackrock_spiketrains_as_units(
+    nwb = gen_snwb()
+    SimpleNWB.blackrock_spiketrains_as_units(
+        nwb,
         blackrock_filename=blackrock_nev_filename,
         device_description="BlackRock device hardward #123",
         electrode_description="Electrode desc",
@@ -77,26 +84,15 @@ def simple_nwb_nev():
         device_name="BlackRock#4",
         electrode_group_name="electrodegroup0"
     )
-    return snwb
+    return nwb
 
 
 def nwb_perg():
-    snwb = gen_snwb()
-    snwb.add_p_erg_data(perg_filename, "perg_table")
-    snwb.add_p_erg_data(perg_filename, "perg_table")
-
-    # snwb.add_p_erg_data(perg_filename, "perg_table", reformat_column_names=False)
-    return snwb
-
-
-def nwb_perg_folder():
-    snwb = gen_snwb()
-    snwb.add_p_erg_folder(
-        foldername="../data/pg_folder",
-        file_pattern="*.txt",
-        table_name="p_ergs",
-    )
-    return snwb
+    nwb = gen_snwb()
+    SimpleNWB.add_p_erg_data(nwb, perg_filename, "perg_table", description="test desc")
+    SimpleNWB.add_p_erg_data(nwb, perg_filename, "perg_table", description="test desc")
+    SimpleNWB.add_p_erg_folder(nwb, foldername=perg_folder, file_pattern="*.txt", table_name="p_ergs", description="test desc")
+    return nwb
 
 
 def nwb_labjack():
@@ -104,10 +100,23 @@ def nwb_labjack():
     r = labjack_load_file(labjack_filename)
     r2 = labjack_load_file(labjack_filename2)
 
-    tw = 2
-    # TODO implement a 'add misc data' or something similar
-    raise NotImplemented
-    pass
+    nwbfile = gen_snwb()
+
+    SimpleNWB.labjack_as_behavioral_data(
+        nwbfile,
+        labjack_filename=labjack_filename,
+        name="labjack_file_1",
+        measured_unit_list=["idk units"]*9,  # 9 columns for data collected
+        start_time=0.0,
+        sampling_rate=1.0,
+        description="Sampled at 1hz some data description here",
+        behavior_module=None,
+        behavior_module_name=None,
+        comments="Labjack behavioral data"
+    )
+    # nwbfile.processing["behavior"]["labjack_file_1_behavioral_events"]["Time"].data[:]
+    # nwbfile.processing["behavior"]["labjack_file_1_metadata"]
+    return nwbfile
 
 
 def plaintext_metadata_test():
@@ -117,7 +126,8 @@ def plaintext_metadata_test():
 
 def csv_test():
     # Loads in well, but file isn't exactly in CSV format, still a test
-    csv_load_dataframe("../data/20230414_unitR2_session002_leftCam-0000DLC_resnet50_licksNov3shuffle1_1030000.csv")
+    r = csv_load_dataframe(csv_filename)
+    tw = 2
 
 
 def yaml_test():
@@ -138,18 +148,31 @@ def tif_test():
     tw = 2
 
 
+def util_test():
+    # Note: This CSV isn't formatted correctly, so it will look weird when loaded
+    r = panda_df_to_dyn_table(pd_df=csv_load_dataframe(csv_filename), table_name="test_table",
+                              description="test description")
+    tw = 2
+
+
 if __name__ == "__main__":
-    # blackrock_util_funcs()
+    # util_test()
+    # blackrock_test()
     # csv_test()
     # plaintext_metadata_test()
     # yaml_test()
-    mp4_test()
+    # mp4_test()
     # tif_test()
+    #
+    funcs_to_assert = [
+        # gen_snwb,
+        # simple_nwb_nev,
+        # nwb_perg,
+        nwb_labjack
+    ]
 
-    # assert not gen_snwb().inspect()
-    # assert not simple_nwb_nev().inspect()
-    # assert not nwb_perg().inspect()
-    # assert not nwb_perg_folder().inspect()
-
-    # assert not nwb_labjack().inspect()
-    pass
+    for func in funcs_to_assert:
+        nwb = func()
+        # Should return '[]' so anything not [] will assert False
+        assert not SimpleNWB.inspect(nwb)
+        print("Assert pass")

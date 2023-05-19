@@ -8,7 +8,7 @@ def yaml_read_file(filename=None):
     :param filename: filename of the yaml file
     :return: dict of data
     """
-    if not filename:
+    if filename is None:
         raise ValueError("Must provide filename argument!")
     if not os.path.exists(filename):
         raise ValueError(f"File '{filename}' not found!")

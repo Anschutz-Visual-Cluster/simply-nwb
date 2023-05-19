@@ -1,5 +1,6 @@
+from hdmf.common import DynamicTable, VectorData
 from nwbinspector import inspect_nwbfile, inspect_nwbfile_object
-from pynwb import NWBHDF5IO
+from pynwb import NWBHDF5IO, TimeSeries
 import warnings
 import re
 
@@ -66,3 +67,42 @@ def inspect_nwb_obj(obj):
     :return: list of inspection objects, if empty no issues were found
     """
     return list(inspect_nwbfile_object(obj))
+
+
+def panda_df_to_dyn_table(pd_df=None, table_name=None, description=None):
+    column_names = list(pd_df.columns)
+    v_columns = []
+    for col_name in column_names:
+        v_columns.append(VectorData(
+            name=col_name,
+            data=list(pd_df[col_name]),
+            description=col_name
+        ))
+
+    return DynamicTable(
+        name=table_name,
+        description=description,
+        columns=v_columns
+    )
+
+
+def panda_df_to_list_of_timeseries(pd_df=None, measured_unit_list=None, series_name_suffix="",
+                                   start_time=None, sampling_rate=None, description=None, comments=None):
+    timeseries_list = []
+    if len(measured_unit_list) != len(pd_df.columns):
+        raise ValueError(
+            f"Invalid 'measured_unit_list' does not match number of columns '{len(measured_unit_list)}' != '{len(pd_df.columns)}' Units: '{measured_unit_list}' Cols: '{pd_df.columns}'")
+
+    for idx, col_name in enumerate(pd_df.columns):
+        timeseries_list.append(TimeSeries(
+            name=f"{series_name_suffix}{col_name}",
+            data=pd_df[col_name].to_numpy(),
+            unit=measured_unit_list[idx],
+            starting_time=start_time,
+            rate=sampling_rate,
+            description=f"column {col_name} {description}",
+            comments=comments,
+        ))
+
+    return timeseries_list
+
