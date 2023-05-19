@@ -13,14 +13,6 @@ Subpackages
 Submodules
 ----------
 
-simply\_nwb.nwb\_inspect\_script module
----------------------------------------
-
-.. automodule:: simply_nwb.nwb_inspect_script
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 simply\_nwb.simple\_nwb module
 ------------------------------
 

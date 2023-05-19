@@ -7,8 +7,14 @@ Welcome to Simply NWB's documentation!
 ======================================
 
 .. toctree::
-   :maxdepth: 2
-   :caption: Contents:
+   :maxdepth: 6
+   :caption: User Guide:
+
+   self
+   main/installation
+   main/getting_started
+   main/examples
+   modules
 
 
 

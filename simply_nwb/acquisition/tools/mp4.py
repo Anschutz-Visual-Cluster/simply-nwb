@@ -65,7 +65,7 @@ def mp4_read_data(filename=None):
         from pynwb.image import ImageSeries
         from simply_nwb.testing import gen_snwb
         from simply_nwb import SimpleNWB
-        from simply_nwb.util import write_nwb
+        from simply_nwb.util import nwb_write
         from pynwb import TimeSeries
         from pynwb.file import Subject
         from hdmf.backends.hdf5.h5_utils import H5DataIO

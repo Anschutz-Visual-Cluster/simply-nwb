@@ -7,6 +7,7 @@ import glob
 def tif_read_image(filename=None):
     """
     Read TIF Image into a numpy array
+
     :param filename: TIF file to read
     :return: numpy array
     """
@@ -22,6 +23,7 @@ def tif_read_image(filename=None):
 def tif_read_directory(foldername=None, filename_glob="*.tif"):
     """
     Read a directory of TIF files, giving a filename glob for specific TIFs to grab
+
     :param foldername: Folder that contains the TIF images, directly inside
     :param filename_glob: naming scheme for the TIF files to be collected. e.g. 'image_*.tif'
     :return: numpy array
@@ -46,6 +48,7 @@ def tif_read_directory(foldername=None, filename_glob="*.tif"):
 def tif_read_subfolder_directory(parent_folder=None, subfolder_glob=None, subfolder_glob_fail_on_file_found=False, file_glob=None):
     """
     Read a directory that contains folders that contain TIFs, and read each TIF from each subfolder into memory
+
     :param parent_folder: main folder containing more folders
     :param subfolder_glob: glob to specify which subfolders to look into e.g. 'folder_num_*'
     :param subfolder_glob_fail_on_file_found: If the subfolder glob returns a file, fail the operation. Defaults to True and if a file is matched, it will ignore it

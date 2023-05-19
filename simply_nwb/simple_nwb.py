@@ -15,7 +15,7 @@ from pynwb.file import Subject
 
 from .acquisition.tools import labjack_load_file
 from .acquisition.tools import blackrock_all_spiketrains, perg_parse_to_table
-from .util import warn_on_name_format, inspect_nwb_obj, write_nwb, panda_df_to_dyn_table, panda_df_to_list_of_timeseries
+from .util import warn_on_name_format, inspect_nwb_obj, nwb_write, panda_df_to_dyn_table, panda_df_to_list_of_timeseries
 
 
 class SimpleNWB(object):
@@ -97,7 +97,7 @@ class SimpleNWB(object):
         :param filename: path to file to write, WILL OVERWRITE!
         :return: None
         """
-        write_nwb(nwbfile, filename)
+        nwb_write(nwbfile, filename)
 
     @staticmethod
     def labjack_as_behavioral_data(

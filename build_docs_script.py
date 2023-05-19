@@ -4,10 +4,14 @@ import subprocess
 
 def main():
     os.chdir("docs")
+
+    subprocess.run(["make.bat", "clean"])
+
     print("Generating API docs..")
     subprocess.run(["sphinx-apidoc", "-o", "source",  "../simply_nwb", "-f"])
 
     print("Generating HTML docs..")
+
     subprocess.run(["sphinx-build",  "-b", "html", "source", "build"])
 
     print("Making HTML docs..")

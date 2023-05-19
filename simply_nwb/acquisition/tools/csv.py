@@ -5,6 +5,7 @@ import os
 def csv_load_dataframe(filename=None, **kwargs):
     """
     Simple wrapper around pd.read_csv for file checks
+
     :param filename: str filename
     :param kwargs: extra args to pass to pandas.read_csv()
     :return: pandas.DataFrame

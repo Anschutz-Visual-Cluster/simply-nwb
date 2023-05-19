@@ -5,7 +5,7 @@ import warnings
 import re
 
 
-def read_nwb(filename):
+def nwb_read(filename):
     """
     Read a file from the filesystem into an NWB object
 
@@ -17,7 +17,7 @@ def read_nwb(filename):
     return io
 
 
-def write_nwb(nwb_obj, filename):
+def nwb_write(nwb_obj, filename):
     """
     Write an NWB object to a file on the local filesystem
 

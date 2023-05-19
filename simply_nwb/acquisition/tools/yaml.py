@@ -5,6 +5,7 @@ import os
 def yaml_read_file(filename=None):
     """
     Read a YAML file into a dict
+
     :param filename: filename of the yaml file
     :return: dict of data
     """
