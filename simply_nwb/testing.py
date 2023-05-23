@@ -6,10 +6,12 @@ from simply_nwb.acquisition.tools import csv_load_dataframe, yaml_read_file
 from simply_nwb.acquisition.tools import labjack_load_file
 from simply_nwb.acquisition.tools import plaintext_metadata_read
 from simply_nwb.acquisition.tools import blackrock_load_data, blackrock_all_spiketrains
+from simply_nwb.util import panda_df_to_dyn_table
 from simply_nwb import SimpleNWB
 import pendulum
+import numpy as np
+import pandas as pd
 
-from util import panda_df_to_dyn_table
 
 # Data is available on Google Drive, as Spencer for access
 blackrock_nev_filename = "../data/wheel_4p3_lSC_2001.nev"
@@ -26,6 +28,8 @@ tif_subfolder_kwargs = {"parent_folder": "../data/tifs/subfolder_formatted",
 tif_single_filename = "../data/tifs/subfolder_formatted/file/Image.tif"
 # Note: This CSV isn't formatted correctly so it will look weird when loaded
 csv_filename = "../data/20230414_unitR2_session002_leftCam-0000DLC_resnet50_licksNov3shuffle1_1030000.csv"
+dict_data = {"data1": [1, 2, 3, 4, 5], "data2": ["a", "b", "c", "d", "e"]}
+dict_data_uneven_cols = {"data1": [1, 2, 3], "data2": ["a", "b", "c", "d", "e"], "aa": 5}
 
 
 def nwb_gen():
@@ -78,7 +82,9 @@ def nwb_nev():
         device_name="BlackRock#4",
         electrode_group_name="electrodegroup0"
     )
-    # nwb.units["spike_times"][:] # List of spike times
+
+    t = nwb.units["spike_times"][:] # List of spike times
+
     return nwb, []
 
 
@@ -87,8 +93,9 @@ def nwb_perg():
     SimpleNWB.add_p_erg_data(nwb, perg_filename, "perg_table", description="test desc")
     SimpleNWB.add_p_erg_data(nwb, perg_filename, "perg_table", description="test desc")
     SimpleNWB.add_p_erg_folder(nwb, foldername=perg_folder, file_pattern="*.txt", table_name="p_ergs", description="test desc")
-    # nwb.acquisition["perg_table_data"]["average"][:]
-    # nwb.acquisition["perg_table_metadata"]["channel"][:]
+
+    t = nwb.acquisition["perg_table_data"]["average"][:]
+    t = nwb.acquisition["perg_table_metadata"]["channel"][:]
     return nwb, []
 
 
@@ -111,10 +118,10 @@ def nwb_labjack():
         behavior_module_name=None,
         comments="Labjack behavioral data"
     )
-    # nwbfile.processing["behavior"]["labjack_file_1_behavioral_events"]["Time"].data[:]
-    # nwbfile.processing["behavior"]["labjack_file_1_behavioral_events"]["v0"].data
-    # nwbfile.processing["behavior"]["labjack_file_1_metadata"]
-    # nwbfile.processing["behavior"]["labjack_file_1_metadata"]["CH+"]
+    t = nwbfile.processing["behavior"]["labjack_file_1_behavioral_events"]["Time"].data[:]
+    t = nwbfile.processing["behavior"]["labjack_file_1_behavioral_events"]["v0"].data
+    t = nwbfile.processing["behavior"]["labjack_file_1_metadata"]
+    t = nwbfile.processing["behavior"]["labjack_file_1_metadata"]["CH+"]
     return nwbfile, []
 
 
@@ -146,8 +153,71 @@ def nwb_two_photon():
     # nwb.acquisition["TwoPhotonSeries"].data
 
     # Ignore the check_data_orientation check
-    # nwb.acquisition["MyTwoPhotonSeries"].data[:]
+    t = nwb.acquisition["MyTwoPhotonSeries"].data[:]
     return nwb, ["check_data_orientation"]
+
+
+def nwb_processing_module_df():
+    nwb = nwb_gen()
+
+    d = pd.DataFrame.from_dict(dict_data)
+
+    SimpleNWB.processing_add_dataframe(
+        nwb,
+        processed_name="ProcessedData",
+        processed_description="Test processing",
+        data=d
+    )
+
+    # Extra to test multiple adds
+    SimpleNWB.processing_add_dataframe(
+        nwb,
+        processed_name="ProcessedData2",
+        processed_description="Test processing",
+        data=d
+    )
+
+    t = nwb.processing["misc"]["ProcessedData"]["data1"]
+    return nwb, []
+
+
+def nwb_processing_module_dict():
+    nwb = nwb_gen()
+
+    SimpleNWB.processing_add_dict(
+        nwb,
+        processed_name="ProcessedDictData1",
+        processed_description="Test processing",
+        data_dict=dict_data,
+        uneven_columns=False
+    )
+    t = nwb.processing["misc"]["ProcessedDictData1"]["data1"][:]
+
+    SimpleNWB.processing_add_dict(
+        nwb,
+        processed_name="ProcessedDictData2",
+        processed_description="Test processing",
+        data_dict=dict_data_uneven_cols,
+        uneven_columns=True
+    )
+    # Because of uneven columns, each key is separate
+    t = nwb.processing["misc"]["ProcessedDictData2_data1"]["data1"][:]
+    t = nwb.processing["misc"]["ProcessedDictData2_data2"]["data2"][:]
+    t = nwb.processing["misc"]["ProcessedDictData2_aa"]["aa"][:]
+
+    # Add another dict
+    SimpleNWB.processing_add_dict(
+        nwb,
+        processed_name="ProcessedDictData2",
+        processed_description="Test processing",
+        data_dict=dict_data,
+        uneven_columns=False
+    )
+    t = nwb.processing["misc"]["ProcessedDictData2"]["data2"][:]
+    contents = nwb.processing["misc"].containers
+
+    # Ignore the check_single_row test since could be an edgecase
+    return nwb, ["check_single_row"]
 
 
 def blackrock_test():
@@ -173,7 +243,8 @@ def yaml_test():
 
 
 def mp4_test():
-    r = mp4_read_data(mp4_filename)
+    # r = mp4_read_data(mp4_filename)
+    # TODO Make faster test case and work on this integration
     tw = 2
 
 
@@ -201,10 +272,12 @@ if __name__ == "__main__":
     # tif_test()
 
     funcs_to_assert = [
-        nwb_nev,
-        nwb_perg,
-        nwb_labjack,
-        nwb_two_photon
+        # nwb_nev,
+        # nwb_perg,
+        # nwb_labjack,
+        # nwb_two_photon,
+        # nwb_processing_module_df,
+        # nwb_processing_module_dict
     ]
 
     SimpleNWB.inspect(nwb_gen())

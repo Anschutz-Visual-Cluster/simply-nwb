@@ -69,7 +69,70 @@ def inspect_nwb_obj(obj):
     return list(inspect_nwbfile_object(obj))
 
 
+def dict_to_dyn_tables(dict_data=None, table_name=None, description=None, multiple_objs=True):
+    """
+    Util function to transform a python dict into a DynamicTable object
+    If keys are not the same length, set multiple_objs=True
+
+    :param dict_data: Dict to add
+    :param table_name: name of the table
+    :param description: description of the table
+    :return: DynamicTable
+    """
+    if dict_data is None or not isinstance(dict_data, dict):
+        raise ValueError("Must provide dict_data argument!")
+    if table_name is None:
+        raise ValueError("Must provide table_name argument!")
+    if description is None:
+        raise ValueError("Must provide description argument")
+
+    column_names = list(dict_data.keys())
+    v_datas = []
+    for col_name in column_names:
+        col_data = dict_data[col_name]
+        if not isinstance(col_data, list):
+            col_data = [col_data]
+
+        v_data = VectorData(
+            name=col_name,
+            data=col_data,
+            description=col_name
+        )
+        if multiple_objs:
+            v_datas.append(DynamicTable(
+                name=f"{table_name}_{col_name}",
+                description=description,
+                columns=[v_data]
+            ))
+        else:
+            v_datas.append(v_data)
+
+    if multiple_objs:
+        return v_datas
+    else:
+        return DynamicTable(
+            name=table_name,
+            description=description,
+            columns=v_datas
+        )
+
+
 def panda_df_to_dyn_table(pd_df=None, table_name=None, description=None):
+    """
+    Util function to transform a pandas DataFrame into a DynamicTable object
+
+    :param pd_df: Pandas DataFrame
+    :param table_name: name of the table
+    :param description: description of the table
+    :return: DynamicTable
+    """
+    if pd_df is None:
+        raise ValueError("Must provide pd_df argument!")
+    if table_name is None:
+        raise ValueError("Must provide table_name argument!")
+    if description is None:
+        raise ValueError("Must provide description argument")
+
     column_names = list(pd_df.columns)
     v_columns = []
     for col_name in column_names:
@@ -105,4 +168,3 @@ def panda_df_to_list_of_timeseries(pd_df=None, measured_unit_list=None, series_n
         ))
 
     return timeseries_list
-

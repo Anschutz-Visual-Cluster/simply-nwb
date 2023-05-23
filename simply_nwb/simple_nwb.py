@@ -17,7 +17,8 @@ from pynwb.ophys import OpticalChannel, TwoPhotonSeries
 
 from .acquisition.tools import labjack_load_file
 from .acquisition.tools import blackrock_all_spiketrains, perg_parse_to_table
-from .util import warn_on_name_format, inspect_nwb_obj, nwb_write, panda_df_to_dyn_table, panda_df_to_list_of_timeseries
+from .util import warn_on_name_format, inspect_nwb_obj, nwb_write, panda_df_to_dyn_table, \
+    panda_df_to_list_of_timeseries, dict_to_dyn_tables
 
 
 class SimpleNWB(object):
@@ -58,7 +59,7 @@ class SimpleNWB(object):
                 institution = "CU Anschutz"
             if isinstance(subject, dict):
                 subject = Subject(**subject)
-            elif not isinstance(subject, Subject):
+            elif not isinstance(subject, Subject) and not subject is None:
                 raise ValueError("'subject' argument must either be a dict or a pynwb.file.Subject type!")
 
             if keywords is None:
@@ -100,6 +101,84 @@ class SimpleNWB(object):
         :return: None
         """
         nwb_write(nwbfile, filename)
+
+    @staticmethod
+    def processing_add_dict(
+            nwbfile,
+            processed_name=None,
+            processed_description=None,
+            data_dict=None,
+            uneven_columns=False):
+        """
+        Add a processed dict into the NWB that doesn't fit in any other part of the NWB. MAKE SURE YOU CANT ADD IT ELSEWHERE BEFORE USING THIS FUNC!
+
+        :param nwbfile: NWBFile to add data to
+        :param processed_name: Name of the processing module
+        :param processed_description: description of the processed data
+        :param data_dict: dict data to add
+        :param uneven_columns: Set this to True if the keys of the dict have different lengths
+        """
+        if processed_name is None:
+            raise ValueError("Must supply processed_name argument!")
+        if processed_description is None:
+            raise ValueError("Must supply processed_description argument!")
+        if data_dict is None or not isinstance(data_dict, dict):
+            raise ValueError("Make sure to supply argument data_dict and it should be a dict type!")
+
+        data_interfaces = dict_to_dyn_tables(
+            dict_data=data_dict,
+            table_name=processed_name,
+            description=processed_description,
+            multiple_objs=uneven_columns
+        )
+        if not uneven_columns:
+            data_interfaces = [data_interfaces]
+        if "misc" in nwbfile.processing:
+            [nwbfile.processing["misc"].add_container(interface) for interface in data_interfaces]
+        else:
+            nwbfile.create_processing_module(
+                name="misc",
+                description=processed_description,
+                data_interfaces=data_interfaces
+            )
+
+    @staticmethod
+    def processing_add_dataframe(
+            nwbfile,
+            processed_name=None,
+            processed_description=None,
+            data=None
+    ):
+        """
+        Add a processed pandas Dataframe into the NWB that doesn't fit in any other part of the NWB. MAKE SURE YOU CANT ADD IT ELSEWHERE BEFORE USING THIS FUNC!
+
+        :param nwbfile: NWBFile to add data to
+        :param processed_name: Name of the processing module
+        :param processed_description: description of the processed data
+        :param data: Pandas Dataframe data to add
+        :return: None
+        """
+        if processed_name is None:
+            raise ValueError("Must provide processed_name argument!")
+        if processed_description is None:
+            raise ValueError("Must provide processed_description argument!")
+        if data is None or not isinstance(data, pd.DataFrame):
+            raise ValueError("data argument must be Pandas Dataframe!")
+
+        data_interface = panda_df_to_dyn_table(
+            pd_df=data,
+            table_name=processed_name,
+            description=processed_description
+        )
+
+        if "misc" in nwbfile.processing:
+            nwbfile.processing["misc"].add_container(data_interface)
+        else:
+            nwbfile.create_processing_module(
+                name="misc",
+                description=processed_description,
+                data_interfaces=[data_interface]
+            )
 
     @staticmethod
     def two_photon_add_data(
