@@ -28,24 +28,18 @@ tif_single_filename = "../data/tifs/subfolder_formatted/file/Image.tif"
 csv_filename = "../data/20230414_unitR2_session002_leftCam-0000DLC_resnet50_licksNov3shuffle1_1030000.csv"
 
 
-def blackrock_test():
-    d = blackrock_load_data(blackrock_nev_filename)
-    d2 = blackrock_all_spiketrains(blackrock_nev_filename)
-    tw = 2
-
-
-def gen_snwb():
+def nwb_gen():
     return SimpleNWB.create_nwb(
         # Required
-        session_description="Poked mouse with a stick",
+        session_description="Mouse cookie eating session",
         # Subtract 1 year so we don't run into the 'NWB start time is at a greater date than current' issue
         session_start_time=pendulum.now().subtract(years=1),
         experimenter=["Schmoe, Joe"],
         lab="Felsen Lab",
-        experiment_description="Poked a mouse with sticks to see if they would react",
+        experiment_description="Gave a mouse a cookie",
 
         # Optional
-        identifier="Mouse stick poke experiment",
+        identifier="cookie_0",
         subject=Subject(**{
             "subject_id": "1",
             "age": "P90D",  # ISO-8601 for 90 days duration
@@ -55,7 +49,7 @@ def gen_snwb():
             # NCBI Taxonomy link or Latin Binomial (e.g.'Rattus norvegicus')
             "species": "http://purl.obolibrary.org/obo/NCBITaxon_10116",
         }),
-        session_id="Session1",
+        session_id="session0",
         institution="CU Anschutz",
         keywords=["mouse"],
 
@@ -63,19 +57,19 @@ def gen_snwb():
     )
 
 
-def simple_nwb_nev():
-    nwb = gen_snwb()
+def nwb_nev():
+    nwb = nwb_gen()
     SimpleNWB.blackrock_spiketrains_as_units(
         nwb,
         blackrock_filename=blackrock_nev_filename,
-        device_description="BlackRock device hardward #123",
+        device_description="BlackRock device hardware #123",
         electrode_description="Electrode desc",
         electrode_location_description="location description",
         electrode_position=(0.1, 0.2, 0.3),
         # stereotaxic position of this electrode group (x, y, z) (+y is inferior)(+x is posterior)(+z is right) (required)
         electrode_impedance=0.4,  # Impedance in ohms
         electrode_brain_region="brain region desc",
-        electrode_filtering_description="filtering, thresholds descrpition",
+        electrode_filtering_description="filtering, thresholds description",
         electrode_reference_description="stainless steel skull screw",
         # Description of the reference electrode and/or reference scheme used for this electrode, e.g.,"stainless steel skull screw" or "online common average referencing"
 
@@ -84,15 +78,18 @@ def simple_nwb_nev():
         device_name="BlackRock#4",
         electrode_group_name="electrodegroup0"
     )
-    return nwb
+    # nwb.units["spike_times"][:] # List of spike times
+    return nwb, []
 
 
 def nwb_perg():
-    nwb = gen_snwb()
+    nwb = nwb_gen()
     SimpleNWB.add_p_erg_data(nwb, perg_filename, "perg_table", description="test desc")
     SimpleNWB.add_p_erg_data(nwb, perg_filename, "perg_table", description="test desc")
     SimpleNWB.add_p_erg_folder(nwb, foldername=perg_folder, file_pattern="*.txt", table_name="p_ergs", description="test desc")
-    return nwb
+    # nwb.acquisition["perg_table_data"]["average"][:]
+    # nwb.acquisition["perg_table_metadata"]["channel"][:]
+    return nwb, []
 
 
 def nwb_labjack():
@@ -100,7 +97,7 @@ def nwb_labjack():
     r = labjack_load_file(labjack_filename)
     r2 = labjack_load_file(labjack_filename2)
 
-    nwbfile = gen_snwb()
+    nwbfile = nwb_gen()
 
     SimpleNWB.labjack_as_behavioral_data(
         nwbfile,
@@ -115,8 +112,48 @@ def nwb_labjack():
         comments="Labjack behavioral data"
     )
     # nwbfile.processing["behavior"]["labjack_file_1_behavioral_events"]["Time"].data[:]
+    # nwbfile.processing["behavior"]["labjack_file_1_behavioral_events"]["v0"].data
     # nwbfile.processing["behavior"]["labjack_file_1_metadata"]
-    return nwbfile
+    # nwbfile.processing["behavior"]["labjack_file_1_metadata"]["CH+"]
+    return nwbfile, []
+
+
+def nwb_two_photon():
+    nwb = nwb_gen()
+    data = tif_read_directory(tif_foldername_folder_fmt, filename_glob="*ome.tif")
+
+    SimpleNWB.two_photon_add_data(
+        nwb,
+        device_name="MyMicroscope",
+        device_description="The coolest microscope ever",
+        device_manufacturer="CoolMicroscopes Inc",
+        optical_channel_description="an optical channel",
+        optical_channel_emission_lambda=500.0,  # in nm
+        imaging_name="my_data",
+        imaging_rate=30.0,  # images acquired in Hz
+        excitation_lambda=600.0,  # wavelength in nm
+        indicator="GFP",
+        location="V1",
+        grid_spacing=[0.1, 0.1],
+        grid_spacing_unit="meters",
+        origin_coords=[0.1, 0.1],
+        origin_coords_unit="meters",
+        photon_series_name="MyTwoPhotonSeries",
+        two_photon_unit="normalized amplitude",
+        two_photon_rate=1.0,  # sampling rate in Hz
+        image_data=data
+    )
+    # nwb.acquisition["TwoPhotonSeries"].data
+
+    # Ignore the check_data_orientation check
+    # nwb.acquisition["MyTwoPhotonSeries"].data[:]
+    return nwb, ["check_data_orientation"]
+
+
+def blackrock_test():
+    d = blackrock_load_data(blackrock_nev_filename)
+    d2 = blackrock_all_spiketrains(blackrock_nev_filename)
+    tw = 2
 
 
 def plaintext_metadata_test():
@@ -142,7 +179,6 @@ def mp4_test():
 
 def tif_test():
     r = tif_read_image(tif_single_filename)
-    # tif_foldername_and_subfolder_fmt = ("../data/tifs/subfolder_formatted", "file*")
     rr = tif_read_subfolder_directory(**tif_subfolder_kwargs)
     rrr = tif_read_directory(tif_foldername_folder_fmt, filename_glob="*ome.tif")
     tw = 2
@@ -163,16 +199,30 @@ if __name__ == "__main__":
     # yaml_test()
     # mp4_test()
     # tif_test()
-    #
+
     funcs_to_assert = [
-        # gen_snwb,
-        # simple_nwb_nev,
-        # nwb_perg,
-        nwb_labjack
+        nwb_nev,
+        nwb_perg,
+        nwb_labjack,
+        nwb_two_photon
     ]
 
+    SimpleNWB.inspect(nwb_gen())
+
     for func in funcs_to_assert:
-        nwb = func()
+        nwb_to_inspect, ignore_error_names = func()
+        results = SimpleNWB.inspect(nwb_to_inspect)
+
+        # Remove ignored errors
+        idxs_to_pop = []
+        for idx, res in enumerate(results):
+            for ignore in ignore_error_names:
+                if res.check_function_name == ignore:
+                    idxs_to_pop.append(idx)
+        idxs_to_pop.reverse()
+        [results.pop(i) for i in idxs_to_pop]
+
         # Should return '[]' so anything not [] will assert False
-        assert not SimpleNWB.inspect(nwb)
+        assert not results
         print("Assert pass")
+    print("All tests passed")

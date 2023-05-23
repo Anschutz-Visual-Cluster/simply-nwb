@@ -42,7 +42,7 @@ def tif_read_directory(foldername=None, filename_glob="*.tif"):
     data = []
     for file in files:
         data.append(tif_read_image(file))
-    return data
+    return np.array(data)  # Convert our list into a numpy array
 
 
 def tif_read_subfolder_directory(parent_folder=None, subfolder_glob=None, subfolder_glob_fail_on_file_found=False, file_glob=None):
