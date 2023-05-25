@@ -29,7 +29,8 @@ class NWBTransfer(object):
             lab_name=None,
             project_name=None,
             session_name=None,
-            transfer_location_root=None
+            transfer_location_root=None,
+            delete_zipped_raw_data_on_upload_finish=False
     ):
         """
         Create a transfer helper object to copy the NWB and raw data over to the storage location
@@ -40,6 +41,7 @@ class NWBTransfer(object):
         :param project_name: Project name, should be in snake_case, see https://simple.wikipedia.org/wiki/Snake_case
         :param session_name: Name for the session, will automatically add 'day_month_year_time' suffix. Should also be in snake_case
         :param transfer_location_root: Location of the storage system, if mounted locally can use Drive:\\ or network if network attached use \\domain\\folder
+        :param delete_zipped_raw_data_on_upload_finish: If True, will delete the zipped folder of the source data after upload
         """
         if nwb_file_location is None:
             raise ValueError("Must supply nwb_file_location!")
@@ -62,6 +64,7 @@ class NWBTransfer(object):
         if not os.path.isdir(transfer_location_root):
             raise ValueError(f"Given 'transfer_location_root' = '{transfer_location_root}' isn't a directory!")
 
+        self.delete_raw_zip = delete_zipped_raw_data_on_upload_finish
         self.nwb_filename = NWBTransfer.make_nwb_filename(session_name)
         self.raw_data_folder_location = raw_data_folder_location
 
@@ -133,7 +136,10 @@ class NWBTransfer(object):
         shutil.copy(self.nwb_file_location, self.nwb_destination_filename)
         _print(f"Copying '{self.zip_file_location}' to '{self.raw_zip_destination_filename}'..")
         shutil.copy(self.zip_file_location, self.raw_zip_destination_filename)
-        _print(f"Upload complete! Feel free to delete the local file '{self.zip_file_location}'")
+        if self.delete_raw_zip:
+            os.remove(self.zip_file_location)
+        else:
+            _print(f"Upload complete! Feel free to delete the local file '{self.zip_file_location}'")
 
     @staticmethod
     def make_raw_zip_filename(session_name):

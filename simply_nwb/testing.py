@@ -305,23 +305,22 @@ def transfer_nwb_test():
         transfer_location_root="../data/",
         lab_name="MyLabName",
         project_name="test_project",
-        session_name="session1"
+        session_name="session1",
+        delete_zipped_raw_data_on_upload_finish=True
     )
     transfer1.upload(
         zip_location_override=transfer0.zip_file_location
     )
+    print("Transfer 1 finished")
 
     try:
-        transfer_fail = NWBTransfer(
+        NWBTransfer(
             nwb_file_location=nwb_save_filename,
             raw_data_folder_location=perg_folder,
             transfer_location_root="../data/",
             lab_name="MyLabName",
             project_name="test_project",
             session_name="session1"
-        )
-        transfer_fail.upload(
-            zip_location_override=transfer0.zip_file_location
         )
         raise Exception("Test NWBTransfer transfer_fail should fail, but didn't!")
     except ValueError as e:
@@ -330,7 +329,6 @@ def transfer_nwb_test():
         pass
 
     print("Clearing test folder and related test things")
-    os.remove(transfer0.zip_file_location)
     shutil.rmtree("../data/MyLabName")
     os.mkdir("../data/MyLabName")
 
