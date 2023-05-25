@@ -262,6 +262,26 @@ def util_test():
     tw = 2
 
 
+def pkl_test():
+    import pickle
+    fn = "../data/output.pkl"
+    fp = open(fn, "rb")
+    data = pickle.load(fp)
+    nwb = nwb_gen()
+    SimpleNWB.processing_add_dict(
+            nwb,
+            processed_name="asdf",
+            processed_description="asdf",
+            data_dict=data,
+            uneven_columns=True)
+    # nwb.processing["misc"]["asdf_eyePositionUncorrected"]["eyePositionUncorrected"].data[:]
+    tw = 2
+
+
+def ephys_test():
+    from open_ephys.analysis import Session
+
+
 if __name__ == "__main__":
     # util_test()
     # blackrock_test()
@@ -270,6 +290,7 @@ if __name__ == "__main__":
     # yaml_test()
     # mp4_test()
     # tif_test()
+    pkl_test()
 
     funcs_to_assert = [
         # nwb_nev,

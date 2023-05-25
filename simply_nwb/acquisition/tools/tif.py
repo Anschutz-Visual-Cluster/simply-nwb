@@ -16,8 +16,16 @@ def tif_read_image(filename=None):
         raise ValueError("Must supply filename argument!")
     if not os.path.exists(filename):
         raise ValueError(f"Filename '{filename}' not found!")
+    print(f"Reading TIF: '{filename}'")
 
-    return np.array(Image.open(filename))
+    try:
+        img = Image.open(filename)
+        arr = np.array(img)
+        img.close()
+    except Exception as e:
+        print("ERROR! Failed reading image! (Is the file corrupted?)")
+        raise e
+    return arr
 
 
 def tif_read_directory(foldername=None, filename_glob="*.tif"):
@@ -40,6 +48,7 @@ def tif_read_directory(foldername=None, filename_glob="*.tif"):
         raise ValueError(f"Filename Glob '{filename_glob}' includes a directory!")
 
     data = []
+    print(f"Reading folder of TIFs: '{foldername}'")
     for file in files:
         data.append(tif_read_image(file))
     return np.array(data)  # Convert our list into a numpy array
@@ -71,18 +80,18 @@ def tif_read_subfolder_directory(parent_folder=None, subfolder_glob=None, subfol
         raise ValueError(f"Subfolder glob '{subfolder_glob}' returned a file!")
 
     filenames = []
+    print(f"Reading TIF Parent folder: '{parent_folder}'")
     for subfolder in subfolders:
         if os.path.isfile(subfolder):
             continue
-
+        print(f"Reading Subfolder of TIFs: '{subfolder}'")
         files = glob.glob(os.path.join(subfolder, file_glob))
         if any([os.path.isdir(f) for f in files]):
             raise ValueError(f"File glob '{file_glob}' returned a directory!")
         filenames.extend(files)
     if not filenames:
         raise ValueError(f"No files found using subfolder glob '{subfolder_glob}' and file glob '{file_glob}'")
-
-    return np.array([tif_read_image(fn) for fn in filenames])
-
-
-
+    imgs = []
+    for fn in filenames:
+        imgs.append(tif_read_image(fn))
+    return np.array(imgs)
