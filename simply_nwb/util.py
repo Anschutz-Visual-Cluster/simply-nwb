@@ -168,3 +168,61 @@ def panda_df_to_list_of_timeseries(pd_df=None, measured_unit_list=None, series_n
         ))
 
     return timeseries_list
+
+
+def _print(val, do_print=True):
+    # Helper function
+    if do_print:
+        print(val, flush=True)
+
+
+def is_camel_case(string, do_print=True):
+    """
+    Check if the given string is in CamelCase
+
+
+    :param string: string to check
+    :param do_print: if False, will not print out anything
+    :return: bool if str is CamelCase
+    """
+
+    reg = re.compile("^[a-zA-Z]*$")
+    matched = reg.match(string)
+    if not matched:
+        _print(f"String '{string}' does not match CamelCase regex!", do_print)
+        return False
+    if not string[0].isupper():
+        _print(f"String '{string}' must start with a capital letter!", do_print)
+        return False
+    return True
+
+
+def is_snake_case(string, do_print=True):
+    """
+    Checks if the given string is snake_case
+
+    :param string: string to check if is snake_case
+    :param do_print: if False, will not print anything
+    :return: bool of if the string is snake_case
+    """
+
+    reg = re.compile("^[a-z_]*$")
+    matched = reg.match(string)
+    if not matched:
+        _print(f"String '{string}' does not match snake_case regex!", do_print)
+        return False
+    return True
+
+
+def is_filesystem_safe(string):
+    """
+    Generic check function for if a string is filesystem safe, limits to a-z A-Z 0-9 '_' '-'
+
+    :param string: String to check
+    :return: True if the given string matches the regex
+    """
+    reg = re.compile(r"^[a-zA-Z_\-0-9]*$")
+    match = reg.match(string)
+    if not match:
+        return False
+    return True

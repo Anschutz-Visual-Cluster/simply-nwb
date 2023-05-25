@@ -9,9 +9,12 @@ from simply_nwb.acquisition.tools import blackrock_load_data, blackrock_all_spik
 from simply_nwb.util import panda_df_to_dyn_table
 from simply_nwb import SimpleNWB
 import pendulum
+import os
+import shutil
 import numpy as np
 import pandas as pd
 
+from transferring import NWBTransfer
 
 # Data is available on Google Drive, as Spencer for access
 blackrock_nev_filename = "../data/wheel_4p3_lSC_2001.nev"
@@ -30,6 +33,7 @@ tif_single_filename = "../data/tifs/subfolder_formatted/file/Image.tif"
 csv_filename = "../data/20230414_unitR2_session002_leftCam-0000DLC_resnet50_licksNov3shuffle1_1030000.csv"
 dict_data = {"data1": [1, 2, 3, 4, 5], "data2": ["a", "b", "c", "d", "e"]}
 dict_data_uneven_cols = {"data1": [1, 2, 3], "data2": ["a", "b", "c", "d", "e"], "aa": 5}
+nwb_save_filename = "../data/nwb_test.nwb"
 
 
 def nwb_gen():
@@ -282,6 +286,55 @@ def ephys_test():
     from open_ephys.analysis import Session
 
 
+def transfer_nwb_test():
+    nwb = nwb_gen()
+    SimpleNWB.write(nwb, nwb_save_filename)
+    transfer0 = NWBTransfer(
+        nwb_file_location=nwb_save_filename,
+        raw_data_folder_location=perg_folder,
+        transfer_location_root="../data/",
+        lab_name="MyLabName",
+        project_name="test_project",
+        session_name="session0"
+    )
+    transfer0.upload()
+
+    transfer1 = NWBTransfer(
+        nwb_file_location=nwb_save_filename,
+        raw_data_folder_location=perg_folder,
+        transfer_location_root="../data/",
+        lab_name="MyLabName",
+        project_name="test_project",
+        session_name="session1"
+    )
+    transfer1.upload(
+        zip_location_override=transfer0.zip_file_location
+    )
+
+    try:
+        transfer_fail = NWBTransfer(
+            nwb_file_location=nwb_save_filename,
+            raw_data_folder_location=perg_folder,
+            transfer_location_root="../data/",
+            lab_name="MyLabName",
+            project_name="test_project",
+            session_name="session1"
+        )
+        transfer_fail.upload(
+            zip_location_override=transfer0.zip_file_location
+        )
+        raise Exception("Test NWBTransfer transfer_fail should fail, but didn't!")
+    except ValueError as e:
+        tw = 2
+        # Test is supposed to fail
+        pass
+
+    print("Clearing test folder and related test things")
+    os.remove(transfer0.zip_file_location)
+    shutil.rmtree("../data/MyLabName")
+    os.mkdir("../data/MyLabName")
+
+
 if __name__ == "__main__":
     # util_test()
     # blackrock_test()
@@ -290,7 +343,9 @@ if __name__ == "__main__":
     # yaml_test()
     # mp4_test()
     # tif_test()
-    pkl_test()
+    # pkl_test()
+    transfer_nwb_test()
+
 
     funcs_to_assert = [
         # nwb_nev,
