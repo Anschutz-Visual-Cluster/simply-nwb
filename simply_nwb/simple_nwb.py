@@ -6,6 +6,7 @@ import glob
 import numpy as np
 import pandas as pd
 import pendulum
+from hdmf.backends.hdf5 import H5DataIO
 from hdmf.common.table import DynamicTable
 from hdmf.common.table import VectorData
 from pynwb import NWBFile, TimeSeries
@@ -49,14 +50,14 @@ class SimpleNWB(object):
             # Required args
             if locals()[arg] is None:
                 raise ValueError("Did not provide '{}' to SimpleNWB()!".format(arg))
+            if institution is None:
+                raise ValueError("Must provide institution!")
 
             # Optional args
             if identifier is None:
                 identifier = str(uuid4())
             if session_id is None:
                 session_id = str(uuid4())
-            if institution is None:
-                institution = "CU Anschutz"
             if isinstance(subject, dict):
                 subject = Subject(**subject)
             elif not isinstance(subject, Subject) and not subject is None:
@@ -101,6 +102,46 @@ class SimpleNWB(object):
         :return: None
         """
         nwb_write(nwbfile, filename)
+
+    @staticmethod
+    def mp4_add_as_behavioral(
+            nwbfile,
+            name=None,
+            numpy_data=None,
+            frame_count=None,
+            sampling_rate=None,
+            description=None,
+            chunking=True,
+            compression=True
+    ):
+        """
+        Add a numpy array as behavioral data, meant to work in conjunction with the mp4
+
+        :param nwbfile: NWBFile to add the mp4 data to
+        :param name: Name of the movie
+        :param numpy_data: data, can be np.memmap
+        :param frame_count: number of total frames
+        :param sampling_rate: frames per second
+        :param description: description of the movie
+        :param chunking: Optional chunking for large files, defaults to True
+        :param compression: Optional compression for large files, defaults to True
+        :return: None
+        """
+
+        behavior_module = nwbfile.create_processing_module(name="behavior", description="test desc")
+        mp4_timeseries = TimeSeries(
+            name=name,
+            data=H5DataIO(
+                data=numpy_data[:frame_count],
+                compression=compression,
+                chunks=chunking
+            ),
+            description=description,
+            unit="mp4 video frame images",
+            rate=sampling_rate
+        )
+
+        behavior_module.add(mp4_timeseries)
 
     @staticmethod
     def processing_add_dict(

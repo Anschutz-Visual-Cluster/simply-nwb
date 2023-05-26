@@ -24,7 +24,7 @@ labjack_filename = "../data/labjack_data.dat"
 labjack_filename2 = "../data/labjack_data2.dat"
 metadata_filename = "../data/metadata.txt"
 yaml_filename = "../data/20230414_unitR2_session002_metadata.yaml"
-mp4_filename = "../data/mp4_test.mp4"
+mp4_filename = "../data/smallmp4.mp4"
 tif_foldername_folder_fmt = "../data/tifs/folder_formatted"
 tif_subfolder_kwargs = {"parent_folder": "../data/tifs/subfolder_formatted",
                         "subfolder_glob": "file*", "file_glob": "Image.tif"}
@@ -224,6 +224,23 @@ def nwb_processing_module_dict():
     return nwb, ["check_single_row"]
 
 
+def nwb_mp4_test():
+    data, frames = mp4_read_data(mp4_filename)
+    # data, frames = mp4_read_data("../data/mp4_test.mp4")
+    nwb = nwb_gen()
+    SimpleNWB.mp4_add_as_behavioral(
+        nwb,
+        name="TestMovie",
+        numpy_data=data,
+        frame_count=frames,
+        sampling_rate=30.0,  # Frames per second
+        description="asdf description here"
+    )
+    tw = 2
+    # nwb_to_inspect.processing["behavior"]["TestMovie"].data[0]
+    return nwb, []
+
+
 def blackrock_test():
     d = blackrock_load_data(blackrock_nev_filename)
     d2 = blackrock_all_spiketrains(blackrock_nev_filename)
@@ -243,12 +260,6 @@ def csv_test():
 
 def yaml_test():
     r = yaml_read_file(yaml_filename)
-    tw = 2
-
-
-def mp4_test():
-    # r = mp4_read_data(mp4_filename)
-    # TODO Make faster test case and work on this integration
     tw = 2
 
 
@@ -305,8 +316,7 @@ def transfer_nwb_test():
         transfer_location_root="../data/",
         lab_name="MyLabName",
         project_name="test_project",
-        session_name="session1",
-        delete_zipped_raw_data_on_upload_finish=True
+        session_name="session1"
     )
     transfer1.upload(
         zip_location_override=transfer0.zip_file_location
@@ -339,10 +349,9 @@ if __name__ == "__main__":
     # csv_test()
     # plaintext_metadata_test()
     # yaml_test()
-    # mp4_test()
     # tif_test()
     # pkl_test()
-    transfer_nwb_test()
+    # transfer_nwb_test()
 
 
     funcs_to_assert = [
@@ -351,7 +360,8 @@ if __name__ == "__main__":
         # nwb_labjack,
         # nwb_two_photon,
         # nwb_processing_module_df,
-        # nwb_processing_module_dict
+        # nwb_processing_module_dict,
+        nwb_mp4_test
     ]
 
     SimpleNWB.inspect(nwb_gen())

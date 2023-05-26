@@ -8,7 +8,7 @@ import glob
 # shutil Hack to increase the buffer size for copying large files faster
 def _copyfileobj_patched(fsrc, fdst, length=0):
     """Patches shutil method to hugely improve copy speed"""
-    length = 256 * 1024 * 1024  # 256MB buffer size
+    length = 1024 * 1024 * 1024  # 1GB // 256MB buffer size
     while 1:
         buf = fsrc.read(length)
         if not buf:
