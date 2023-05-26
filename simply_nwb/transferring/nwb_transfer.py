@@ -4,6 +4,7 @@ import pendulum
 from simply_nwb.util import is_camel_case, is_snake_case, is_filesystem_safe, _print
 import glob
 
+
 # shutil Hack to increase the buffer size for copying large files faster
 def _copyfileobj_patched(fsrc, fdst, length=0):
     """Patches shutil method to hugely improve copy speed"""
@@ -29,8 +30,7 @@ class NWBTransfer(object):
             lab_name=None,
             project_name=None,
             session_name=None,
-            transfer_location_root=None,
-            delete_zipped_raw_data_on_upload_finish=False
+            transfer_location_root=None
     ):
         """
         Create a transfer helper object to copy the NWB and raw data over to the storage location
@@ -41,7 +41,6 @@ class NWBTransfer(object):
         :param project_name: Project name, should be in snake_case, see https://simple.wikipedia.org/wiki/Snake_case
         :param session_name: Name for the session, will automatically add 'day_month_year_time' suffix. Should also be in snake_case
         :param transfer_location_root: Location of the storage system, if mounted locally can use Drive:\\ or network if network attached use \\domain\\folder
-        :param delete_zipped_raw_data_on_upload_finish: If True, will delete the zipped folder of the source data after upload
         """
         if nwb_file_location is None:
             raise ValueError("Must supply nwb_file_location!")
@@ -60,11 +59,11 @@ class NWBTransfer(object):
         if transfer_location_root is None:
             raise ValueError("Must supply 'transfer_location_root' argument!")
         if not os.path.exists(transfer_location_root):
-            raise ValueError(f"Given 'transfer_location_root' = '{transfer_location_root}' can't be found! (Try using an absolute path?)")
+            raise ValueError(
+                f"Given 'transfer_location_root' = '{transfer_location_root}' can't be found! (Try using an absolute path?)")
         if not os.path.isdir(transfer_location_root):
             raise ValueError(f"Given 'transfer_location_root' = '{transfer_location_root}' isn't a directory!")
 
-        self.delete_raw_zip = delete_zipped_raw_data_on_upload_finish
         self.nwb_filename = NWBTransfer.make_nwb_filename(session_name)
         self.raw_data_folder_location = raw_data_folder_location
 
@@ -78,22 +77,24 @@ class NWBTransfer(object):
             project_name
         )
 
-        nwbs_folder = os.path.join(self.destination_path_root, "nwbs")
-        raw_folder = os.path.join(self.destination_path_root, "raw")
+        self.nwbs_folder = os.path.join(self.destination_path_root, "nwbs")
+        self.raw_folder = os.path.join(self.destination_path_root, "raw")
 
         if not os.path.exists(self.destination_path_root):
             print(f"Project dir '{self.destination_path_root}' doesn't exist, creating")
             os.mkdir(self.destination_path_root)
-            os.mkdir(nwbs_folder)
-            os.mkdir(raw_folder)
+            os.mkdir(self.nwbs_folder)
+            os.mkdir(self.raw_folder)
 
-        nwb_sessions = glob.glob(os.path.join(nwbs_folder, f"{session_name}*"))
+        nwb_sessions = glob.glob(os.path.join(self.nwbs_folder, f"{session_name}*"))
         if nwb_sessions:
-            raise ValueError(f"Error: nwb session '{session_name}' already exists in project '{project_name}'! Please make session names unique")
+            raise ValueError(
+                f"Error: nwb session '{session_name}' already exists in project '{project_name}'! Please make session names unique")
 
-        raw_sessions = glob.glob(os.path.join(raw_folder, f"{session_name}*"))
+        raw_sessions = glob.glob(os.path.join(self.raw_folder, f"{session_name}*"))
         if raw_sessions:
-            raise ValueError(f"Error: raw session '{session_name}' already exists in project '{project_name}'! Please make session names unique")
+            raise ValueError(
+                f"Error: raw session '{session_name}' already exists in project '{project_name}'! Please make session names unique")
 
         self.nwb_destination_filename = os.path.join(
             self.destination_path_root,
@@ -120,26 +121,25 @@ class NWBTransfer(object):
         if zip_location_override:
             if os.path.exists(zip_location_override) and os.path.isfile(zip_location_override):
                 self.zip_file_location = zip_location_override
+                _print(f"Copying '{self.zip_file_location}' to '{self.raw_zip_destination_filename}'..")
+                shutil.copy(self.zip_file_location, self.raw_zip_destination_filename)
             else:
                 raise ValueError("Given zip_location_override doesn't exist or isn't a file!")
         else:
             _print("Zipping up raw data..", do_print)
-            shutil.make_archive(self.zip_file_location_unsuffixed, "zip", self.raw_data_folder_location)
+            old_cwd = os.getcwd()
+            os.chdir(self.raw_folder)
+
+            shutil.make_archive(
+                self.zip_file_location_unsuffixed,
+                "zip",
+                self.raw_data_folder_location
+            )
+            os.chdir(old_cwd)
             _print("Raw data zip complete", do_print)
-
-        self._upload(do_print)
-
-    def _upload(self, do_print=True):
-        # Internal method to upload the given files to the storage
 
         _print(f"Copying '{self.nwb_file_location}' to '{self.nwb_destination_filename}'..")
         shutil.copy(self.nwb_file_location, self.nwb_destination_filename)
-        _print(f"Copying '{self.zip_file_location}' to '{self.raw_zip_destination_filename}'..")
-        shutil.copy(self.zip_file_location, self.raw_zip_destination_filename)
-        if self.delete_raw_zip:
-            os.remove(self.zip_file_location)
-        else:
-            _print(f"Upload complete! Feel free to delete the local file '{self.zip_file_location}'")
 
     @staticmethod
     def make_raw_zip_filename(session_name):

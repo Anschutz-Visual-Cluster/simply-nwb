@@ -8,6 +8,7 @@ Subpackages
    :maxdepth: 4
 
    simply_nwb.acquisition
+   simply_nwb.transferring
    simply_nwb.transforms
 
 Submodules
