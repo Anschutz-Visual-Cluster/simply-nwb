@@ -86,6 +86,7 @@ class SimpleNWB(object):
     def inspect(nwbfile):
         """
         Inspect the given NWBFile
+
         :param nwbfile: NWBFile object
         :return: List of issues with the file, if empty, inspection passed
         """
@@ -97,6 +98,7 @@ class SimpleNWB(object):
     def write(nwbfile, filename=None):
         """
         Write the give NWBFile object to file
+
         :param nwbfile: NWBFile object to write
         :param filename: path to file to write, WILL OVERWRITE!
         :return: None
@@ -151,7 +153,7 @@ class SimpleNWB(object):
             data_dict=None,
             uneven_columns=False):
         """
-        Add a processed dict into the NWB that doesn't fit in any other part of the NWB. MAKE SURE YOU CANT ADD IT ELSEWHERE BEFORE USING THIS FUNC!
+        Add a processed dict into the NWB that doesn't fit in any other part of the NWB. MAKE SURE YOU CANNOT ADD IT ELSEWHERE BEFORE USING THIS FUNC!
 
         :param nwbfile: NWBFile to add data to
         :param processed_name: Name of the processing module
@@ -191,7 +193,7 @@ class SimpleNWB(object):
             data=None
     ):
         """
-        Add a processed pandas Dataframe into the NWB that doesn't fit in any other part of the NWB. MAKE SURE YOU CANT ADD IT ELSEWHERE BEFORE USING THIS FUNC!
+        Add a processed pandas Dataframe into the NWB that doesn't fit in any other part of the NWB. MAKE SURE YOU CANNOT ADD IT ELSEWHERE BEFORE USING THIS FUNC!
 
         :param nwbfile: NWBFile to add data to
         :param processed_name: Name of the processing module

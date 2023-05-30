@@ -149,8 +149,21 @@ def panda_df_to_dyn_table(pd_df=None, table_name=None, description=None):
     )
 
 
-def panda_df_to_list_of_timeseries(pd_df=None, measured_unit_list=None, series_name_suffix="",
+def panda_df_to_list_of_timeseries(pd_df=None, measured_unit_list=None, series_name_prefix="",
                                    start_time=None, sampling_rate=None, description=None, comments=None):
+    """
+    Turns a panda dataframe into a list of TimeSeries objects
+
+
+    :param pd_df: dataframe to transform
+    :param measured_unit_list: list of units for each column of the dataframe
+    :param series_name_prefix: optional series prefix
+    :param start_time: time the data started for each timeseries
+    :param sampling_rate: sampling rate
+    :param description: description of this dataframe
+    :param comments: optional comments
+    :return:
+    """
     timeseries_list = []
     if len(measured_unit_list) != len(pd_df.columns):
         raise ValueError(
@@ -158,7 +171,7 @@ def panda_df_to_list_of_timeseries(pd_df=None, measured_unit_list=None, series_n
 
     for idx, col_name in enumerate(pd_df.columns):
         timeseries_list.append(TimeSeries(
-            name=f"{series_name_suffix}{col_name}",
+            name=f"{series_name_prefix}{col_name}",
             data=pd_df[col_name].to_numpy(),
             unit=measured_unit_list[idx],
             starting_time=start_time,

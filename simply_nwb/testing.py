@@ -293,10 +293,6 @@ def pkl_test():
     tw = 2
 
 
-def ephys_test():
-    from open_ephys.analysis import Session
-
-
 def transfer_nwb_test():
     nwb = nwb_gen()
     SimpleNWB.write(nwb, nwb_save_filename)

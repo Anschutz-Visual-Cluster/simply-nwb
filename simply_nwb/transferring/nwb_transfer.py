@@ -21,6 +21,10 @@ shutil.copyfileobj = _copyfileobj_patched
 
 
 class NWBTransfer(object):
+    """
+    Class to aid in transferring data around in a structured way
+    """
+    
     TIMESTAMP_SUFFIX = "{day}_{month}_{year}-{hour}_{minute}_{second}"
 
     def __init__(
