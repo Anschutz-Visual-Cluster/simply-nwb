@@ -159,7 +159,7 @@ def panda_df_to_list_of_timeseries(pd_df=None, measured_unit_list=None, series_n
     :param measured_unit_list: list of units for each column of the dataframe
     :param series_name_prefix: optional series prefix
     :param start_time: time the data started for each timeseries
-    :param sampling_rate: sampling rate
+    :param sampling_rate: sampling rate in Hz
     :param description: description of this dataframe
     :param comments: optional comments
     :return:

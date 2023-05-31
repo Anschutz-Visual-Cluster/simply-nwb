@@ -1,11 +1,9 @@
 from uuid import uuid4
 import os
-import sys
 import glob
 
 import numpy as np
 import pandas as pd
-import pendulum
 from hdmf.backends.hdf5 import H5DataIO
 from hdmf.common.table import DynamicTable
 from hdmf.common.table import VectorData
@@ -16,8 +14,8 @@ from pynwb.ecephys import ElectrodeGroup
 from pynwb.file import Subject
 from pynwb.ophys import OpticalChannel, TwoPhotonSeries
 
-from .acquisition.tools import labjack_load_file
-from .acquisition.tools import blackrock_all_spiketrains, perg_parse_to_table
+from transforms import labjack_load_file
+from transforms import blackrock_all_spiketrains, perg_parse_to_table
 from .util import warn_on_name_format, inspect_nwb_obj, nwb_write, panda_df_to_dyn_table, \
     panda_df_to_list_of_timeseries, dict_to_dyn_tables
 
@@ -38,14 +36,30 @@ class SimpleNWB(object):
             experimenter=None,
             lab=None,
             experiment_description=None,
+            institution=None,
             # Optional
             identifier=None,
             subject=None,
             session_id=None,
-            institution=None,
             keywords=None,
             related_publications=None
     ):
+        """
+        Create a new nwbfile from the given params. More infor here https://pynwb.readthedocs.io/en/stable/pynwb.file.html#pynwb.file.NWBFile
+
+        :param session_description: description of the session
+        :param session_start_time: start date and time of recording session
+        :param experimenter: name of experimenter, list of form ["Lastname, Firstname"]
+        :param lab: name of lab
+        :param experiment_description: experiment description
+        :param institution: institution
+        :param identifier: Optional identifier for the file, if not supplied will be generated
+        :param subject: Optional pynwb.file.Subject object for metadata
+        :param session_id: Optional lab-specific session id, if not supplied will be generated
+        :param keywords: Optional list of keywords e.g ["keyword1", "keyword2", ...]
+        :param related_publications: Optional related publications in a list of the DOI, URL, PMID etc ["DOI:1234/asdf"]
+        :return:
+        """
         for arg in SimpleNWB._REQUIRED_ARGS:
             # Required args
             if locals()[arg] is None:
@@ -365,7 +379,7 @@ class SimpleNWB(object):
         :param labjack_filename: LabJack filename to read from
         :param name: Name of this behavioral unit
         :param measured_unit_list: List of SI unit strings corresponding to the columns of the labjack data
-        :param start_time: start time float
+        :param start_time: start time float in Hz
         :param sampling_rate: sampling rate in Hz
         :param description: description of the behavioral data
         :param behavior_module: Optional NWB behavior module to add this data to, otherwise will create a new one e.g. nwbfile.processing["behavior"]

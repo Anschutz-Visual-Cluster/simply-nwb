@@ -1,20 +1,20 @@
 from pynwb.file import Subject
 
-from simply_nwb.acquisition.tools import mp4_read_data
-from simply_nwb.acquisition.tools import tif_read_image, tif_read_directory, tif_read_subfolder_directory
-from simply_nwb.acquisition.tools import csv_load_dataframe, yaml_read_file
-from simply_nwb.acquisition.tools import labjack_load_file
-from simply_nwb.acquisition.tools import plaintext_metadata_read
-from simply_nwb.acquisition.tools import blackrock_load_data, blackrock_all_spiketrains
+from simply_nwb.transforms import mp4_read_data
+from simply_nwb.transforms import tif_read_image, tif_read_directory, tif_read_subfolder_directory
+from simply_nwb.transforms import csv_load_dataframe, yaml_read_file
+from simply_nwb.transforms import labjack_load_file
+from simply_nwb.transforms import plaintext_metadata_read
+from simply_nwb.transforms import blackrock_load_data, blackrock_all_spiketrains
 from simply_nwb.util import panda_df_to_dyn_table
 from simply_nwb import SimpleNWB
 import pendulum
 import os
 import shutil
-import numpy as np
 import pandas as pd
 
-from transferring import NWBTransfer
+from simply_nwb.transferring import NWBTransfer
+from transferring.filesync import OneWayFileSync
 
 # Data is available on Google Drive, as Spencer for access
 blackrock_nev_filename = "../data/wheel_4p3_lSC_2001.nev"
@@ -339,6 +339,16 @@ def transfer_nwb_test():
     os.mkdir("../data/MyLabName")
 
 
+def filesync_test():
+    OneWayFileSync(
+        "../data/from_src",
+        "../data/to_dst",
+        "*"
+    ).start()
+
+    tw = 2
+    pass
+
 if __name__ == "__main__":
     # util_test()
     # blackrock_test()
@@ -348,7 +358,7 @@ if __name__ == "__main__":
     # tif_test()
     # pkl_test()
     # transfer_nwb_test()
-
+    filesync_test()
 
     funcs_to_assert = [
         # nwb_nev,
@@ -357,7 +367,7 @@ if __name__ == "__main__":
         # nwb_two_photon,
         # nwb_processing_module_df,
         # nwb_processing_module_dict,
-        nwb_mp4_test
+        # nwb_mp4_test
     ]
 
     SimpleNWB.inspect(nwb_gen())

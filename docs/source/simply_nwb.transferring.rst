@@ -1,6 +1,14 @@
 simply\_nwb.transferring package
 ================================
 
+Subpackages
+-----------
+
+.. toctree::
+   :maxdepth: 4
+
+   simply_nwb.transferring.filesync
+
 Submodules
 ----------
 

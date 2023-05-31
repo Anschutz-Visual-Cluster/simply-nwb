@@ -36,7 +36,8 @@ def mp4_read_data(filename=None):
     first_frame = next(frames)
 
     tmp_filename = "tmp_memmap"
-    mem_data = np.memmap(filename=tmp_filename, mode="w+", dtype=first_frame.dtype, shape=(frame_count, *first_frame.shape))
+    mem_data = np.memmap(filename=tmp_filename, mode="w+", dtype=first_frame.dtype,
+                         shape=(frame_count, *first_frame.shape))
 
     def clean_memmap(mmdata, tmp_fn):
         try:
@@ -53,7 +54,7 @@ def mp4_read_data(filename=None):
     mem_data[0] = first_frame
     count = 1
     for idx, frame in enumerate(frames):
-        mem_data[idx+1] = frame
+        mem_data[idx + 1] = frame
         count = count + 1
 
     return mem_data, count

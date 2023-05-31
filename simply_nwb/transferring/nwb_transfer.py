@@ -5,21 +5,6 @@ from simply_nwb.util import is_camel_case, is_snake_case, is_filesystem_safe, _p
 import glob
 
 
-# shutil Hack to increase the buffer size for copying large files faster
-def _copyfileobj_patched(fsrc, fdst, length=0):
-    """Patches shutil method to hugely improve copy speed"""
-    length = 1024 * 1024 * 1024  # 1GB // 256MB buffer size
-    while 1:
-        buf = fsrc.read(length)
-        if not buf:
-            break
-        fdst.write(buf)
-
-
-# Overwrite the shutil.copyfilyobj method
-shutil.copyfileobj = _copyfileobj_patched
-
-
 class NWBTransfer(object):
     """
     Class to aid in transferring data around in a structured way

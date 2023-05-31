@@ -10,11 +10,11 @@ Below are examples of transformations and integrations for specific file types
     examples/blackrock
     examples/csv
     examples/labjack
-    examples/misc
     examples/mp4
     examples/p_erg
     examples/tif
     examples/yaml
+    examples/misc
 
 
 beans
