@@ -2,7 +2,7 @@ import sys
 import os
 from twine.__main__ import main as twine_main
 
- 
+
 def main():
     pypirc_file = os.path.expanduser('~/.pypirc')
     if not os.path.exists(pypirc_file):
