@@ -16,7 +16,7 @@ from pynwb.ophys import OpticalChannel, TwoPhotonSeries
 
 from simply_nwb.transforms import labjack_load_file
 from simply_nwb.transforms import blackrock_all_spiketrains, perg_parse_to_table
-from .util import warn_on_name_format, inspect_nwb_obj, nwb_write, panda_df_to_dyn_table, \
+from simply_nwb.util import warn_on_name_format, inspect_nwb_obj, nwb_write, panda_df_to_dyn_table, \
     panda_df_to_list_of_timeseries, dict_to_dyn_tables
 
 
