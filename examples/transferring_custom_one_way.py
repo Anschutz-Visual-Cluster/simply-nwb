@@ -11,8 +11,8 @@ def main():
         "../data/from_src",
         # Will copy all new files / changes to this directory
         "../data/to_dst",
-        # asdf
         {
+            # Copy all bmp files
             "*.bmp": {},
             # Will copy all <name>.txt files to 'TextFiles/myfile_name_me_<name>.py'
             # Will create directories under the destination folder

@@ -1,4 +1,0 @@
-YAML Examples
-=============
-
-asdfga

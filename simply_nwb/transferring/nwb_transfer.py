@@ -54,20 +54,20 @@ class NWBTransfer(object):
             raise ValueError(f"Given 'transfer_location_root' = '{transfer_location_root}' isn't a directory!")
 
         self.nwb_filename = NWBTransfer.make_nwb_filename(session_name)
-        self.raw_data_folder_location = raw_data_folder_location
+        self.raw_data_folder_location = os.path.abspath(raw_data_folder_location)
 
-        self.nwb_file_location = nwb_file_location
-        self.zip_file_location_unsuffixed = NWBTransfer.make_raw_zip_filename(session_name)
-        self.zip_file_location = f"{self.zip_file_location_unsuffixed}.zip"
+        self.nwb_file_location = os.path.abspath(nwb_file_location)
+        self.zip_file_name_no_extension = NWBTransfer.make_raw_zip_filename(session_name)
+        self.zip_file_full_name = f"{self.zip_file_name_no_extension}.zip"
 
         self.destination_path_root = os.path.join(
-            transfer_location_root,
+            os.path.abspath(transfer_location_root),
             lab_name,
             project_name
         )
 
-        self.nwbs_folder = os.path.join(self.destination_path_root, "nwbs")
-        self.raw_folder = os.path.join(self.destination_path_root, "raw")
+        self.nwbs_folder = os.path.abspath(os.path.join(self.destination_path_root, "nwbs"))
+        self.raw_folder = os.path.abspath(os.path.join(self.destination_path_root, "raw"))
 
         if not os.path.exists(self.destination_path_root):
             print(f"Project dir '{self.destination_path_root}' doesn't exist, creating")
@@ -94,7 +94,7 @@ class NWBTransfer(object):
         self.raw_zip_destination_filename = os.path.join(
             self.destination_path_root,
             "raw",
-            self.zip_file_location
+            self.zip_file_full_name
         )
 
     def upload(self, zip_location_override=None, do_print=True):
@@ -109,9 +109,8 @@ class NWBTransfer(object):
 
         if zip_location_override:
             if os.path.exists(zip_location_override) and os.path.isfile(zip_location_override):
-                self.zip_file_location = zip_location_override
-                _print(f"Copying '{self.zip_file_location}' to '{self.raw_zip_destination_filename}'..")
-                shutil.copy(self.zip_file_location, self.raw_zip_destination_filename)
+                _print(f"Copying '{zip_location_override}' to '{self.raw_zip_destination_filename}'..")
+                shutil.copy(zip_location_override, self.raw_zip_destination_filename)
             else:
                 raise ValueError("Given zip_location_override doesn't exist or isn't a file!")
         else:
@@ -120,7 +119,7 @@ class NWBTransfer(object):
             os.chdir(self.raw_folder)
 
             shutil.make_archive(
-                self.zip_file_location_unsuffixed,
+                self.zip_file_name_no_extension,
                 "zip",
                 self.raw_data_folder_location
             )

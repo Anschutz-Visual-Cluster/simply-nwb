@@ -9,6 +9,9 @@ import os
 # Simply-NWB Package Documentation
 # https://simply-nwb.readthedocs.io/en/latest/index.html
 
+
+# Constants at the top of the file for things you might want to change for
+# different NWBs for flexibility
 INSTITUTION = "InstitutionHere"
 
 EXPERIMENTERS = [
@@ -17,15 +20,15 @@ EXPERIMENTERS = [
 LAB = "LabNameHere"
 
 EXPERIMENT_DESCRIPTION = "Long description of experiment goes here"
-EXPERIMENT_KEYWORDS = None  # optional
+EXPERIMENT_KEYWORDS = ["mouse"]
 EXPERIMENT_RELATED_PUBLICATIONS = None  # optional
 
 SESSION_IDENTIFIER = "session1"
 SESSION_DESCRIPTION = "sess desc"
 SUBJECT = Subject(
     subject_id="mouse1",
-    age="P90D", # ISO-8601 90 days?
-    strain="TypeOfMouse",  # Wild Strain ?
+    age="P90D", # ISO-8601 90 days
+    strain="TypeOfMouse",  # if unknown, put Wild Strain
     description="Mouse desc goes here",
     sex="M"
 )
@@ -33,7 +36,6 @@ SUBJECT = Subject(
 SESSION_ROOT = "../data/mouse1"
 METADATA_FILENAME = "metadata.txt"
 
-# Need multiple labjack datas?
 LABJACK_FILENAME = "labjack/lick1OKRvartest40-4-14-23/data_0.dat"
 LABJACK_NAME = "Labjack Data"
 LABJACK_SAMPLING_RATE = 20.0  # in Hz
@@ -53,9 +55,11 @@ PICKLE_DATA_DESCRIPTION = "desc of data here"
 
 
 def main():
+    # Parse out the metadata.txt file
     metadata = plaintext_metadata_read(os.path.join(SESSION_ROOT, METADATA_FILENAME))
     start_date = pendulum.parse(metadata["Date"], tz="local")
 
+    # Create the NWB object
     nwbfile = SimpleNWB.create_nwb(
         session_description=SESSION_DESCRIPTION,
         session_start_time=start_date,
@@ -64,7 +68,7 @@ def main():
         experiment_description=EXPERIMENT_DESCRIPTION,
         session_id=SESSION_IDENTIFIER,
         institution=INSTITUTION,
-        keywords=EXPERIMENT_KEYWORDS,  # TODO?
+        keywords=EXPERIMENT_KEYWORDS,
         related_publications=EXPERIMENT_RELATED_PUBLICATIONS
     )
 
@@ -72,7 +76,7 @@ def main():
     labjack_filename_absolute = os.path.join(SESSION_ROOT, LABJACK_FILENAME)
     labjack_data = labjack_load_file(labjack_filename_absolute)
 
-    SimpleNWB.labjack_as_behavioral_data(
+    SimpleNWB.labjack_file_as_behavioral_data(
         nwbfile,
         labjack_filename=labjack_filename_absolute,
         name=LABJACK_NAME,
@@ -90,15 +94,15 @@ def main():
         nwbfile,
         processed_name=PICKLE_DATA_NAME_PREFIX,
         processed_description=PICKLE_DATA_DESCRIPTION,
-        data=pickle_data,
+        data_dict=pickle_data,
         uneven_columns=True
     )
 
+    # Access the data like this: (where missingDataMask is part of the pickle file)
     # nwb.processing["misc"]["NAMEHERE_missingDataMask"]["missingDataMask"].data[0]["left"]
     # nwb.processing["misc"]["NAMEHERE_eyePositionUncorrected"]["eyePositionUncorrected"].data[:]
 
     # Add mp4 data to NWB
-    # THIS WILL TAKE A LONG ASS TIME, ADD PRINTS?
     for mp4_name, mp4_filename in MP4_FILES.items():
         data, frames = mp4_read_data(os.path.join(SESSION_ROOT, mp4_filename))
         SimpleNWB.mp4_add_as_behavioral(
@@ -113,9 +117,6 @@ def main():
     now = pendulum.now()
     SimpleNWB.write(nwbfile, "nwb-{}-{}_{}".format(now.month, now.day, now.hour))
 
-    pass
-
 
 if __name__ == "__main__":
     main()
-

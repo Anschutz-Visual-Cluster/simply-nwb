@@ -5,16 +5,13 @@ Below are examples of transformations and integrations for specific file types
 
 .. toctree::
     :maxdepth: 2
-    :caption: Acquisition and Integration Examples
+    :caption: Transformation and Integration Examples
 
+    examples/packaging
     examples/blackrock
-    examples/csv
     examples/labjack
     examples/mp4
     examples/p_erg
     examples/tif
-    examples/yaml
     examples/misc
-
-
-beans
+    examples/filesync

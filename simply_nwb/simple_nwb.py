@@ -17,7 +17,7 @@ from pynwb.ophys import OpticalChannel, TwoPhotonSeries
 from simply_nwb.transforms import labjack_load_file
 from simply_nwb.transforms import blackrock_all_spiketrains, perg_parse_to_table
 from simply_nwb.util import warn_on_name_format, inspect_nwb_obj, nwb_write, panda_df_to_dyn_table, \
-    panda_df_to_list_of_timeseries, dict_to_dyn_tables
+    panda_df_to_list_of_timeseries, dict_to_dyn_tables, inspect_nwb_file
 
 
 class SimpleNWB(object):
@@ -97,9 +97,21 @@ class SimpleNWB(object):
             return NWBFile(**nwb_kwargs)
 
     @staticmethod
-    def inspect(nwbfile):
+    def inspect_filename(nwbfilename):
         """
-        Inspect the given NWBFile
+        Inspect the given NWBFile from filename
+
+        :param nwbfilename: filename to the NWB
+        :return: List of issues with the file, if empty, inspection passed
+        """
+
+        results = inspect_nwb_file(nwbfilename)
+        return results
+
+    @staticmethod
+    def inspect_obj(nwbfile):
+        """
+        Inspect the given NWBFile object
 
         :param nwbfile: NWBFile object
         :return: List of issues with the file, if empty, inspection passed
@@ -144,7 +156,11 @@ class SimpleNWB(object):
         :return: None
         """
 
-        behavior_module = nwbfile.create_processing_module(name="behavior", description="test desc")
+        if "behavior" in nwbfile.processing:
+            behavior_module = nwbfile.processing["behavior"]
+        else:
+            behavior_module = nwbfile.create_processing_module(name="behavior", description=description)
+
         mp4_timeseries = TimeSeries(
             name=name,
             data=H5DataIO(
@@ -360,7 +376,7 @@ class SimpleNWB(object):
         nwbfile.add_acquisition(two_photon_series)
 
     @staticmethod
-    def labjack_as_behavioral_data(
+    def labjack_file_as_behavioral_data(
             nwbfile,
             labjack_filename=None,
             name=None,
@@ -373,10 +389,52 @@ class SimpleNWB(object):
             comments="Labjack behavioral data"
     ):
         """
-        Add LabJack data to the NWBFile as a behavioral entry
+        Add LabJack data to the NWBFile as a behavioral entry from a filename
 
         :param nwbfile: NWBFile to add the data to
-        :param labjack_filename: LabJack filename to read from
+        :param labjack_filename: filename of the labjack file to load
+        :param name: Name of this behavioral unit
+        :param measured_unit_list: List of SI unit strings corresponding to the columns of the labjack data
+        :param start_time: start time float in Hz
+        :param sampling_rate: sampling rate in Hz
+        :param description: description of the behavioral data
+        :param behavior_module: Optional NWB behavior module to add this data to, otherwise will create a new one e.g. nwbfile.processing["behavior"]
+        :param behavior_module_name: optional module name to add this behavior to, if exists will append. will ignore if behavior_module arg is supplied
+        :param comments: additional comments about the data
+        :return:
+        """
+        return SimpleNWB.labjack_as_behavioral_data(
+            nwbfile,
+            labjack_data=labjack_load_file(labjack_filename),
+            name=name,
+            measured_unit_list=measured_unit_list,
+            start_time=start_time,
+            sampling_rate=sampling_rate,
+            description=description,
+            behavior_module=behavior_module,
+            behavior_module_name=behavior_module_name,
+            comments=comments
+        )
+        pass
+
+    @staticmethod
+    def labjack_as_behavioral_data(
+            nwbfile,
+            labjack_data=None,
+            name=None,
+            measured_unit_list=None,
+            start_time=None,
+            sampling_rate=None,
+            description=None,
+            behavior_module=None,
+            behavior_module_name=None,
+            comments="Labjack behavioral data"
+    ):
+        """
+        Add LabJack data to the NWBFile as a behavioral entry, given the labjack data
+
+        :param nwbfile: NWBFile to add the data to
+        :param labjack_data: dict formatted like the return value from simply_nwb.transforms.labjack.labjack_load_file
         :param name: Name of this behavioral unit
         :param measured_unit_list: List of SI unit strings corresponding to the columns of the labjack data
         :param start_time: start time float in Hz
@@ -399,8 +457,10 @@ class SimpleNWB(object):
             raise ValueError("start_time must be a float! For example, if using a whole number use 5.0 instead of 5")
         if description is None:
             raise ValueError("Must provide description argument for labjack data!")
-
-        labjack_data = labjack_load_file(labjack_filename)
+        if labjack_data is None:
+            raise ValueError("Must provide labjack_data argument!")
+        if not isinstance(labjack_data, dict) or "metadata" not in labjack_data or "data" not in labjack_data:
+            raise ValueError("Argument labjack_data should be a dict with keys 'metadata' and 'data'!")
 
         timeseries_list = panda_df_to_list_of_timeseries(
             pd_df=labjack_data["data"],

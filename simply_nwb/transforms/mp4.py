@@ -1,7 +1,8 @@
+import atexit
+
 import numpy as np
 import os
 import cv2
-import atexit
 import imageio.v3 as iio
 
 
@@ -45,11 +46,14 @@ def mp4_read_data(filename=None):
             mmdata._mmap.close()
             del mmdata
             os.remove(tmp_fn)
+        except KeyboardInterrupt as e:
+            print(f"Program terminated before tempfile '{os.path.abspath(tmp_fn)}' could be removed")
         except Exception as e:
             print(f"Error deleting temporary file '{tmp_fn}'")
             raise e
 
     atexit.register(clean_memmap, mmdata=mem_data, tmp_fn=tmp_filename)
+
 
     mem_data[0] = first_frame
     count = 1
