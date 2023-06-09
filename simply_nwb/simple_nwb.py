@@ -132,6 +132,31 @@ class SimpleNWB(object):
         nwb_write(nwbfile, filename)
 
     @staticmethod
+    def add_to_processing_module(nwbfile, module_name=None, module_description=None, data=None):
+        """
+        Add data to a processing module, automatically creating it if it doesn't already exist
+
+        :param nwbfile: NWBFile to add the data to
+        :param module_name: Name of the processing module to create or use
+        :param module_description: Description of the module, if not provided will be auto generated
+        :param data: Data to be added to the processing module
+        :return: None
+        """
+        if module_name is None:
+            raise ValueError("Must provide module name argument!")
+        if module_description is None:
+            module_description = f"{module_name} processing module"
+        if data is None:
+            raise ValueError("Must provide data to add to the processing module!")
+
+        if module_name in nwbfile.processing:
+            pmodule = nwbfile.processing[module_name]
+        else:
+            pmodule = nwbfile.create_processing_module(name=module_name, description=module_description)
+
+        pmodule.add(data)
+
+    @staticmethod
     def mp4_add_as_behavioral(
             nwbfile,
             name=None,
@@ -179,6 +204,7 @@ class SimpleNWB(object):
     def processing_add_dict(
             nwbfile,
             processed_name=None,
+            processing_module_name=None,
             processed_description=None,
             data_dict=None,
             uneven_columns=False):
@@ -186,7 +212,8 @@ class SimpleNWB(object):
         Add a processed dict into the NWB that doesn't fit in any other part of the NWB. MAKE SURE YOU CANNOT ADD IT ELSEWHERE BEFORE USING THIS FUNC!
 
         :param nwbfile: NWBFile to add data to
-        :param processed_name: Name of the processing module
+        :param processing_module_name: Name of the processing module to add the data to. If not set will default to 'misc'
+        :param processed_name: Name of the dynamic table
         :param processed_description: description of the processed data
         :param data_dict: dict data to add
         :param uneven_columns: Set this to True if the keys of the dict have different lengths
@@ -197,6 +224,8 @@ class SimpleNWB(object):
             raise ValueError("Must supply processed_description argument!")
         if data_dict is None or not isinstance(data_dict, dict):
             raise ValueError("Make sure to supply argument data_dict and it should be a dict type!")
+        if not processing_module_name:
+            processing_module_name = "misc"
 
         data_interfaces = dict_to_dyn_tables(
             dict_data=data_dict,
@@ -206,11 +235,12 @@ class SimpleNWB(object):
         )
         if not uneven_columns:
             data_interfaces = [data_interfaces]
-        if "misc" in nwbfile.processing:
-            [nwbfile.processing["misc"].add_container(interface) for interface in data_interfaces]
+
+        if processing_module_name in nwbfile.processing:
+            [nwbfile.processing[processing_module_name].add_container(interface) for interface in data_interfaces]
         else:
             nwbfile.create_processing_module(
-                name="misc",
+                name=processing_module_name,
                 description=processed_description,
                 data_interfaces=data_interfaces
             )
@@ -593,7 +623,7 @@ class SimpleNWB(object):
         [nwbfile.add_unit(spike_times=spike) for spike in blackrock_spiketrains]
 
     @staticmethod
-    def add_p_erg_folder(nwbfile, foldername=None, file_pattern=None, table_name=None, description=None,
+    def p_erg_add_folder(nwbfile, foldername=None, file_pattern=None, table_name=None, description=None,
                          reformat_column_names=True):
         """
         Add pERG data for each file into the NWB, from 'foldername' that matches 'file_pattern' into the NWB
@@ -627,7 +657,7 @@ class SimpleNWB(object):
         if not files:
             raise ValueError(f"No files found matching pattern '{pattern}")
         for filename in files:
-            SimpleNWB.add_p_erg_data(
+            SimpleNWB.p_erg_add_data(
                 nwbfile,
                 filename=filename,
                 table_name=table_name,
@@ -636,7 +666,7 @@ class SimpleNWB(object):
             )
 
     @staticmethod
-    def add_p_erg_data(nwbfile, filename=None, table_name=None, description=None, reformat_column_names=True):
+    def p_erg_add_data(nwbfile, filename=None, table_name=None, description=None, reformat_column_names=True):
         """
         Add pERG data into the NWB, from file, formatting it
 

@@ -4,7 +4,7 @@ import numpy as np
 import os
 import cv2
 import imageio.v3 as iio
-
+import uuid
 
 def _get_framecount(filename):
     try:
@@ -36,9 +36,12 @@ def mp4_read_data(filename=None):
     frames = iio.imiter(filename, plugin="pyav")
     first_frame = next(frames)
 
-    tmp_filename = "tmp_memmap"
-    mem_data = np.memmap(filename=tmp_filename, mode="w+", dtype=first_frame.dtype,
-                         shape=(frame_count, *first_frame.shape))
+    tmp_filename = f"tmpmemmap-{str(uuid.uuid4())}"
+    try:
+        mem_data = np.memmap(filename=tmp_filename, mode="w+", dtype=first_frame.dtype,
+                             shape=(frame_count, *first_frame.shape))
+    except OSError as e:
+        raise Exception(f"Unable to create memmap, are you out of harddrive space? Error: {str(e)}")
 
     def clean_memmap(mmdata, tmp_fn):
         try:
@@ -53,7 +56,6 @@ def mp4_read_data(filename=None):
             raise e
 
     atexit.register(clean_memmap, mmdata=mem_data, tmp_fn=tmp_filename)
-
 
     mem_data[0] = first_frame
     count = 1

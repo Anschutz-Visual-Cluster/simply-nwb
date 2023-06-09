@@ -77,6 +77,7 @@ def dict_to_dyn_tables(dict_data=None, table_name=None, description=None, multip
     :param dict_data: Dict to add
     :param table_name: name of the table
     :param description: description of the table
+    :param multiple_objs: set to true if the columns are uneven
     :return: DynamicTable
     """
     if dict_data is None or not isinstance(dict_data, dict):
@@ -85,6 +86,11 @@ def dict_to_dyn_tables(dict_data=None, table_name=None, description=None, multip
         raise ValueError("Must provide table_name argument!")
     if description is None:
         raise ValueError("Must provide description argument")
+
+    # TODO Flatten tool here?
+    for key, val in dict_data.items():
+        if isinstance(val, dict):
+            raise ValueError(f"Key '{key}' is a dict, cannot format! Pull the subkeys out to a top level!")
 
     column_names = list(dict_data.keys())
     v_datas = []
