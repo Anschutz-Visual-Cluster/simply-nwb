@@ -12,6 +12,7 @@ from pynwb.behavior import BehavioralEvents
 from pynwb.device import Device
 from pynwb.ecephys import ElectrodeGroup
 from pynwb.file import Subject
+from pynwb.image import ImageSeries
 from pynwb.ophys import OpticalChannel, TwoPhotonSeries
 
 from simply_nwb.transforms import labjack_load_file
@@ -157,18 +158,19 @@ class SimpleNWB(object):
         pmodule.add(data)
 
     @staticmethod
-    def mp4_add_as_behavioral(
+    def mp4_add_as_acquisition(
             nwbfile,
             name=None,
             numpy_data=None,
             frame_count=None,
             sampling_rate=None,
             description=None,
+            starting_time=0.0,
             chunking=True,
             compression=True
     ):
         """
-        Add a numpy array as behavioral data, meant to work in conjunction with the mp4
+        Add a numpy array as acquisition data, meant to work in conjunction with the mp4 reader utility
 
         :param nwbfile: NWBFile to add the mp4 data to
         :param name: Name of the movie
@@ -176,17 +178,13 @@ class SimpleNWB(object):
         :param frame_count: number of total frames
         :param sampling_rate: frames per second
         :param description: description of the movie
+        :param starting_time: Starting time of this movie, relative to experiment start. Defaults to 0.0
         :param chunking: Optional chunking for large files, defaults to True
         :param compression: Optional compression for large files, defaults to True
         :return: None
         """
 
-        if "behavior" in nwbfile.processing:
-            behavior_module = nwbfile.processing["behavior"]
-        else:
-            behavior_module = nwbfile.create_processing_module(name="behavior", description=description)
-
-        mp4_timeseries = TimeSeries(
+        mp4_timeseries = ImageSeries(
             name=name,
             data=H5DataIO(
                 data=numpy_data[:frame_count],
@@ -194,11 +192,13 @@ class SimpleNWB(object):
                 chunks=chunking
             ),
             description=description,
-            unit="mp4 video frame images",
-            rate=sampling_rate
+            unit="n.a.",
+            rate=sampling_rate,
+            format="raw",
+            starting_time=starting_time
         )
 
-        behavior_module.add(mp4_timeseries)
+        nwbfile.add_acquisition(mp4_timeseries)
 
     @staticmethod
     def processing_add_dict(
