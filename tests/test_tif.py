@@ -4,21 +4,22 @@ from gen_nwb import nwb_gen
 
 
 def tif_test():
-    r = tif_read_image("../data/tifs/subfolder_formatted/file/Image.tif")
+    r = tif_read_image("E:\\tifs\\subfolder_formatted/file/Image.tif")
+    r2 = tif_read_directory("E:\\tifs\\broken", skip_on_error=True)
 
     rr = tif_read_subfolder_directory(
-        parent_folder="../data/tifs/subfolder_formatted",
+        parent_folder="E:\\tifs\\subfolder_formatted",
         subfolder_glob="file*",
         file_glob="Image.tif"
     )
 
-    rrr = tif_read_directory("../data/tifs/folder_formatted", filename_glob="*ome.tif")
+    rrr = tif_read_directory("E:\\tifs\\folder_formatted", filename_glob="*ome.tif")
     tw = 2
 
 
 def nwb_two_photon():
     nwb = nwb_gen()
-    data = tif_read_directory("../data/tifs/folder_formatted", filename_glob="*ome.tif")
+    data = tif_read_directory("E:\\tifs\\folder_formatted", filename_glob="*ome.tif")
 
     SimpleNWB.two_photon_add_data(
         nwb,

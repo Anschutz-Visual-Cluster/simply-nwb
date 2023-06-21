@@ -4,11 +4,16 @@ import numpy as np
 import glob
 
 
-def tif_read_image(filename=None):
+class ImageLoadError(Exception):
+    pass
+
+
+def tif_read_image(filename=None, show_error=True):
     """
     Read TIF Image into a numpy array
 
     :param filename: TIF file to read
+    :param show_error: Print out errors or not, defaults to true
     :return: numpy array
     """
 
@@ -23,16 +28,41 @@ def tif_read_image(filename=None):
         arr = np.array(img)
         img.close()
     except Exception as e:
-        print("ERROR! Failed reading image! (Is the file corrupted?)")
-        raise e
+        if show_error:
+            print("ERROR! Failed reading image! (Is the file corrupted?)")
+            print(f"Error {str(e)}")
+        raise ImageLoadError()
+
     return arr
 
 
-def tif_read_directory(foldername=None, filename_glob="*.tif"):
+def read_filelist(filelist, skip_on_error=False, show_error=True):
+    """
+    Load a list of files and return them
+
+    :param filelist: list of str filenames
+    :param skip_on_error: skip any images that fail
+    :param show_error: show an error when images fail to load
+    :return: list of loaded file data
+    """
+    data = []
+    for file in filelist:
+        try:
+            data.append(tif_read_image(file, show_error=show_error))
+        except ImageLoadError as e:
+            if skip_on_error:
+                print(f"Error reading file '{file}', skipping..")
+                continue
+            raise e
+    return data
+
+
+def tif_read_directory(foldername=None, filename_glob="*.tif", skip_on_error=False):
     """
     Read a directory of TIF files, giving a filename glob for specific TIFs to grab
 
     :param foldername: Folder that contains the TIF images, directly inside
+    :param skip_on_error: Skip any files that fail to load
     :param filename_glob: naming scheme for the TIF files to be collected. e.g. 'image_*.tif'
     :return: numpy array
     """
@@ -47,14 +77,13 @@ def tif_read_directory(foldername=None, filename_glob="*.tif"):
     if any([os.path.isdir(ff) for ff in files]):
         raise ValueError(f"Filename Glob '{filename_glob}' includes a directory!")
 
-    data = []
     print(f"Reading folder of TIFs: '{foldername}'")
-    for file in files:
-        data.append(tif_read_image(file))
+    data = read_filelist(files, skip_on_error=skip_on_error, show_error=not skip_on_error)
+
     return np.array(data)  # Convert our list into a numpy array
 
 
-def tif_read_subfolder_directory(parent_folder=None, subfolder_glob=None, subfolder_glob_fail_on_file_found=False, file_glob=None):
+def tif_read_subfolder_directory(parent_folder=None, subfolder_glob=None, subfolder_glob_fail_on_file_found=False, file_glob=None, skip_on_error=False):
     """
     Read a directory that contains folders that contain TIFs, and read each TIF from each subfolder into memory
 
@@ -62,6 +91,7 @@ def tif_read_subfolder_directory(parent_folder=None, subfolder_glob=None, subfol
     :param subfolder_glob: glob to specify which subfolders to look into e.g. 'folder_num_*'
     :param subfolder_glob_fail_on_file_found: If the subfolder glob returns a file, fail the operation. Defaults to True and if a file is matched, it will ignore it
     :param file_glob: TIF file glob to specify which TIFs from the subfolders to read, e.g. 'image0*.tif'
+    :param skip_on_error: Skip any files that fail to load
     :return: numpy array
     """
     if parent_folder is None:
@@ -91,7 +121,7 @@ def tif_read_subfolder_directory(parent_folder=None, subfolder_glob=None, subfol
         filenames.extend(files)
     if not filenames:
         raise ValueError(f"No files found using subfolder glob '{subfolder_glob}' and file glob '{file_glob}'")
-    imgs = []
-    for fn in filenames:
-        imgs.append(tif_read_image(fn))
+
+    print("Reading all files..")
+    imgs = read_filelist(filenames, skip_on_error=skip_on_error, show_error=not skip_on_error)
     return np.array(imgs)

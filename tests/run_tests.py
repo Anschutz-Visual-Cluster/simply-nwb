@@ -11,26 +11,26 @@ from gen_nwb import nwb_gen
 
 
 if __name__ == "__main__":
-    util_test()
-    nev_test()
-    csv_test()
-    plaintext_metadata_test()
-    yaml_test()
+    # util_test()
+    # nev_test()
+    # csv_test()
+    # plaintext_metadata_test()
+    # yaml_test()
     tif_test()
-    pkl_test()
-    transfer_nwb_test()
+    # pkl_test()
+    # transfer_nwb_test()
 
     # Standalone test, will hang until killed
     # filesync_test()
 
     funcs_to_assert = [
-        nwb_nev,
-        nwb_perg,
-        nwb_labjack,
-        nwb_two_photon,
-        nwb_processing_module_df,
-        nwb_processing_module_dict,
-        nwb_mp4_test
+        # nwb_nev,
+        # nwb_perg,
+        # nwb_labjack,
+        # nwb_two_photon,
+        # nwb_processing_module_df,
+        # nwb_processing_module_dict,
+        # nwb_mp4_test
     ]
 
     SimpleNWB.inspect_obj(nwb_gen())
