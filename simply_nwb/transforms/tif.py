@@ -72,7 +72,7 @@ def tif_read_directory(foldername=None, filename_glob="*.tif", skip_on_error=Fal
         raise ValueError(f"Folder '{foldername}' not found!")
 
     files = glob.glob(os.path.join(foldername, filename_glob))
-    if files is None:
+    if files is None or not files:
         raise ValueError(f"No files found with glob '{filename_glob}' in folder {foldername}!")
     if any([os.path.isdir(ff) for ff in files]):
         raise ValueError(f"Filename Glob '{filename_glob}' includes a directory!")

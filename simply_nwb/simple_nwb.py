@@ -13,6 +13,7 @@ from pynwb.device import Device
 from pynwb.ecephys import ElectrodeGroup
 from pynwb.file import Subject
 from pynwb.image import ImageSeries
+from pynwb.misc import AnnotationSeries
 from pynwb.ophys import OpticalChannel, TwoPhotonSeries
 
 from simply_nwb.transforms import labjack_load_file
@@ -158,6 +159,63 @@ class SimpleNWB(object):
         pmodule.add(data)
 
     @staticmethod
+    def tif_add_as_processing_imageseries(
+            nwbfile,
+            name=None,
+            processing_module_name=None,
+            numpy_data=None,
+            sampling_rate=None,
+            description=None,
+            starting_time=0.0,
+            chunking=True,
+            compression=True
+    ):
+        """
+
+        Add a numpy array as a processing module with image data, meant to work in conjunction with the tif reader utility
+
+        :param nwbfile: NWBFile to add the mp4 data to
+        :param name: Name of the movie
+        :param numpy_data: data, can be np.memmap
+        :param processing_module_name: Name of the processing module to append or create to add the images to
+        :param sampling_rate: frames per second
+        :param description: description of the movie
+        :param starting_time: Starting time of this movie, relative to experiment start. Defaults to 0.0
+        :param chunking: Optional chunking for large files, defaults to True
+        :param compression: Optional compression for large files, defaults to True
+        """
+        if name is None:
+            raise ValueError("Must supply name argument for the name of the ImageSeries!")
+        if processing_module_name is None:
+            raise ValueError("Must supply processing_module_name argument!")
+        if numpy_data is None:
+            raise ValueError("Must supply numpy_data for insert into ImageSeries!")
+        args = (sampling_rate, description, starting_time, chunking, compression)
+        if None in args:
+            raise ValueError(f"Missing argument, got None in args {str(args)}")
+
+        images = ImageSeries(
+            name=name,
+            data=H5DataIO(
+                data=numpy_data,
+                compression=compression,
+                chunks=chunking
+            ),
+            description=description,
+            unit="n.a.",
+            rate=sampling_rate,
+            format="raw",
+            starting_time=starting_time
+        )
+
+        SimpleNWB.add_to_processing_module(
+            nwbfile,
+            module_name=processing_module_name,
+            module_description=description,
+            data=images
+        )
+
+    @staticmethod
     def mp4_add_as_acquisition(
             nwbfile,
             name=None,
@@ -183,6 +241,13 @@ class SimpleNWB(object):
         :param compression: Optional compression for large files, defaults to True
         :return: None
         """
+        if name is None:
+            raise ValueError("Must supply name argument for the name of the ImageSeries!")
+        if numpy_data is None:
+            raise ValueError("Must supply numpy_data for insert into ImageSeries!")
+        args = (sampling_rate, description, starting_time, chunking, compression)
+        if None in args:
+            raise ValueError(f"Missing argument, got None in args {str(args)}")
 
         mp4_timeseries = ImageSeries(
             name=name,
@@ -706,18 +771,23 @@ class SimpleNWB(object):
                 ]
             ))
 
-        if metadata_dict_name in nwbfile.acquisition:
-            nwbfile.acquisition[metadata_dict_name].add_row(metadata_dict)
-        else:
-            nwbfile.add_acquisition(DynamicTable(
-                name=metadata_dict_name,
-                description="pERG metadata",
-                columns=[
-                    VectorData(
-                        name=column,
-                        data=[metadata_dict[column]],
-                        description=column
-                    )
-                    for column in metadata_dict.keys()
-                ]
-            ))
+        meta_key_format = "meta_{key}"
+        format_key = lambda x: meta_key_format.format(key=x)
+
+        # For each key, create an annotation series
+        for meta_key, meta_value in metadata_dict.items():
+            if isinstance(meta_value, list) and len(meta_value) > 1:
+                raise ValueError(
+                    "Metadata collected from pERG cannot be automatically formatted into NWB, nested list detected! Please flatten or manually enter data")
+
+            nwb_key = format_key(meta_key)
+            if nwb_key not in nwbfile.acquisition:
+                nwbfile.add_acquisition(AnnotationSeries(
+                    name=nwb_key,
+                    description="pERG metadata for {}".format(meta_key),
+                    data=[meta_value[0]],
+                    timestamps=[0]
+                ))
+            else:
+                nwbfile.acquisition[nwb_key].add_annotation(float(len(nwbfile.acquisition[nwb_key].data)),
+                                                            meta_value[0])
