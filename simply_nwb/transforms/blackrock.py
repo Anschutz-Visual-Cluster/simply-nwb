@@ -2,7 +2,7 @@ from neo.io.blackrockio import BlackrockIO
 import numpy as np
 
 
-def blackrock_load_data(filename, raw=False):
+def blackrock_load_data(filename: str, raw: bool = False) -> list[dict]:
     """
     Load data from a blackrock file (nev, ns5 and nsX files) into a list of dictionaries
     Uses the NEO Library
@@ -58,7 +58,7 @@ def blackrock_load_data(filename, raw=False):
     return blackrock_dict
 
 
-def blackrock_all_spiketrains(filename):
+def blackrock_all_spiketrains(filename: str) -> list:
     """
     Load data from a blackrock file (nev, ns5 and nsX files) and grab all the spike trains into a single list
     Uses the NEO Library

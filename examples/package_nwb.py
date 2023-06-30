@@ -12,20 +12,20 @@ import os
 
 # Constants at the top of the file for things you might want to change for
 # different NWBs for flexibility
-INSTITUTION = "InstitutionHere"
+INSTITUTION: str = "InstitutionHere"
 
-EXPERIMENTERS = [
+EXPERIMENTERS: [str] = [
     "Lastname, Firstname"
 ]
-LAB = "LabNameHere"
+LAB: str = "LabNameHere"
 
-EXPERIMENT_DESCRIPTION = "Long description of experiment goes here"
-EXPERIMENT_KEYWORDS = ["mouse"]
+EXPERIMENT_DESCRIPTION: str = "Long description of experiment goes here"
+EXPERIMENT_KEYWORDS: [str] = ["mouse"]
 EXPERIMENT_RELATED_PUBLICATIONS = None  # optional
 
-SESSION_IDENTIFIER = "session1"
-SESSION_DESCRIPTION = "sess desc"
-SUBJECT = Subject(
+SESSION_IDENTIFIER: str = "session1"
+SESSION_DESCRIPTION: str = "sess desc"
+SUBJECT: Subject = Subject(
     subject_id="mouse1",
     age="P90D", # ISO-8601 90 days
     strain="TypeOfMouse",  # if unknown, put Wild Strain
@@ -33,25 +33,25 @@ SUBJECT = Subject(
     sex="M"
 )
 
-SESSION_ROOT = "../data/mouse1"
-METADATA_FILENAME = "metadata.txt"
+SESSION_ROOT: str = "../data/mouse1"
+METADATA_FILENAME: str = "metadata.txt"
 
-LABJACK_FILENAME = "labjack/lick1OKRvartest40-4-14-23/data_0.dat"
-LABJACK_NAME = "Labjack Data"
-LABJACK_SAMPLING_RATE = 20.0  # in Hz
-LABJACK_DESCRIPTION = "labjack description here"
-LABJACK_COMMENTS = "labjack comments here"
+LABJACK_FILENAME: str = "labjack/lick1OKRvartest40-4-14-23/data_0.dat"
+LABJACK_NAME: str = "Labjack Data"
+LABJACK_SAMPLING_RATE: float = 20.0  # in Hz
+LABJACK_DESCRIPTION: str = "labjack description here"
+LABJACK_COMMENTS: str = "labjack comments here"
 
-MP4_FILES = {
+MP4_FILES: {str: str} = {
     "RightEye": "movies/righteye.mp4",
     "LeftEye": "movies/lefteye.mp4"
 }
-MP4_DESCRIPTION = "description of mp4 files here"
-MP4_SAMPLING_RATE = 120.0
+MP4_DESCRIPTION: str = "description of mp4 files here"
+MP4_SAMPLING_RATE: float = 120.0
 
-PICKLE_FILENAME = "pickledata.pkl"
-PICKLE_DATA_NAME_PREFIX = "data"
-PICKLE_DATA_DESCRIPTION = "desc of data here"
+PICKLE_FILENAME: str = "pickledata.pkl"
+PICKLE_DATA_NAME_PREFIX: str = "data"
+PICKLE_DATA_DESCRIPTION: str = "desc of data here"
 
 
 def main():

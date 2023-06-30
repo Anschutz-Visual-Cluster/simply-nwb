@@ -1,3 +1,6 @@
+import numpy as np
+from dict_plus.utils.simpleflatten import SimpleFlattener
+
 from simply_nwb import SimpleNWB
 from simply_nwb.transforms import plaintext_metadata_read, csv_load_dataframe, yaml_read_file
 from simply_nwb.util import panda_df_to_dyn_table
@@ -15,7 +18,7 @@ def pkl_test():
             nwb,
             processed_name="asdf",
             processed_description="asdf",
-            data_dict=data,
+            data_dict=SimpleFlattener(simple_types=[np.ndarray, type(None)]).flatten(data),
             uneven_columns=True)
     # nwb.processing["misc"]["asdf_eyePositionUncorrected"]["eyePositionUncorrected"].data[:]
     tw = 2

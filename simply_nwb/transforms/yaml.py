@@ -2,7 +2,7 @@ import yaml
 import os
 
 
-def yaml_read_file(filename=None):
+def yaml_read_file(filename: str) -> dict:
     """
     Read a YAML file into a dict
 

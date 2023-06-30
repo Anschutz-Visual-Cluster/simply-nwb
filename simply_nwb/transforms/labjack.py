@@ -3,7 +3,7 @@ import pendulum
 import pandas as pd
 
 
-def _get_labjack_meta_lines(meta_lines):
+def _get_labjack_meta_lines(meta_lines: list[str]) -> pd.DataFrame:
     # Helper function to parse out the metadata from the labjack file, since they are in a different format than the
     # recorded data
 
@@ -37,15 +37,13 @@ def _get_labjack_meta_lines(meta_lines):
     return pd.DataFrame.from_records(rows, columns=col_headers)
 
 
-def labjack_load_file(filename=None):
+def labjack_load_file(filename: str) -> dict:
     """
     Returns labjack data and labjack metadata from a given filename
 
     :param filename: file to parse
     :return: data dict 'data' dataframe, 'metadata' dataframe, 'date' datetime
     """
-    if filename is None:
-        raise ValueError("Must provide filename argument!")
     if not os.path.exists(filename):
         raise ValueError(f"File '{filename}' not found in current working path '{os.getcwd()}")
 

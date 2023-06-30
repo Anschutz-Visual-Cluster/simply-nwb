@@ -1,23 +1,14 @@
+from typing import Any, Optional
+
+import pandas as pd
 from hdmf.common import DynamicTable, VectorData
 from nwbinspector import inspect_nwbfile, inspect_nwbfile_object
-from pynwb import NWBHDF5IO, TimeSeries
+from pynwb import NWBHDF5IO, TimeSeries, NWBFile
 import warnings
 import re
 
 
-def nwb_read(filename):
-    """
-    Read a file from the filesystem into an NWB object
-
-    :param filename: filename of an NWB file
-    :return: file pointer ready to be .read() to get the nwb object
-    """
-    # Can't use context manager, will close file, return file pointer
-    io = NWBHDF5IO(filename, mode="r")
-    return io
-
-
-def nwb_write(nwb_obj, filename):
+def nwb_write(nwb_obj: NWBFile, filename: str):
     """
     Write an NWB object to a file on the local filesystem
 
@@ -30,7 +21,7 @@ def nwb_write(nwb_obj, filename):
     io.close()
 
 
-def warn_on_name_format(name_value, context_str=""):
+def warn_on_name_format(name_value: str, context_str: str = "") -> bool:
     """
     Send a warning if the name format isn't in 'snake_case'
 
@@ -49,7 +40,7 @@ def warn_on_name_format(name_value, context_str=""):
     return True
 
 
-def inspect_nwb_file(filename):
+def inspect_nwb_file(filename: str) -> list[Any]:
     """
     Return the inspection list of a given NWB file
 
@@ -59,7 +50,7 @@ def inspect_nwb_file(filename):
     return list(inspect_nwbfile(nwbfile_path=filename))
 
 
-def inspect_nwb_obj(obj):
+def inspect_nwb_obj(obj: NWBFile) -> list[Any]:
     """
     Return the inspection list of a given NWB object
 
@@ -69,7 +60,7 @@ def inspect_nwb_obj(obj):
     return list(inspect_nwbfile_object(obj))
 
 
-def dict_to_dyn_tables(dict_data=None, table_name=None, description=None, multiple_objs=True):
+def dict_to_dyn_tables(dict_data: dict, table_name: str, description: str, multiple_objs: bool = True) -> DynamicTable:
     """
     Util function to transform a python dict into a DynamicTable object
     If keys are not the same length, set multiple_objs=True
@@ -80,14 +71,7 @@ def dict_to_dyn_tables(dict_data=None, table_name=None, description=None, multip
     :param multiple_objs: set to true if the columns are uneven
     :return: DynamicTable
     """
-    if dict_data is None or not isinstance(dict_data, dict):
-        raise ValueError("Must provide dict_data argument!")
-    if table_name is None:
-        raise ValueError("Must provide table_name argument!")
-    if description is None:
-        raise ValueError("Must provide description argument")
 
-    # TODO Flatten tool here?
     for key, val in dict_data.items():
         if isinstance(val, dict):
             raise ValueError(f"Key '{key}' is a dict, cannot format! Pull the subkeys out to a top level!")
@@ -123,7 +107,7 @@ def dict_to_dyn_tables(dict_data=None, table_name=None, description=None, multip
         )
 
 
-def panda_df_to_dyn_table(pd_df=None, table_name=None, description=None):
+def panda_df_to_dyn_table(pd_df: pd.DataFrame, table_name: str, description: str) -> DynamicTable:
     """
     Util function to transform a pandas DataFrame into a DynamicTable object
 
@@ -132,12 +116,6 @@ def panda_df_to_dyn_table(pd_df=None, table_name=None, description=None):
     :param description: description of the table
     :return: DynamicTable
     """
-    if pd_df is None:
-        raise ValueError("Must provide pd_df argument!")
-    if table_name is None:
-        raise ValueError("Must provide table_name argument!")
-    if description is None:
-        raise ValueError("Must provide description argument")
 
     column_names = list(pd_df.columns)
     v_columns = []
@@ -155,8 +133,9 @@ def panda_df_to_dyn_table(pd_df=None, table_name=None, description=None):
     )
 
 
-def panda_df_to_list_of_timeseries(pd_df=None, measured_unit_list=None, series_name_prefix="",
-                                   start_time=None, sampling_rate=None, description=None, comments=None):
+def panda_df_to_list_of_timeseries(pd_df: pd.DataFrame, measured_unit_list: list[str], start_time: float,
+                                   sampling_rate: float, description: str, series_name_prefix: str = "",
+                                   comments: Optional[str] = None) -> list[TimeSeries]:
     """
     Turns a panda dataframe into a list of TimeSeries objects
 
@@ -189,13 +168,13 @@ def panda_df_to_list_of_timeseries(pd_df=None, measured_unit_list=None, series_n
     return timeseries_list
 
 
-def _print(val, do_print=True):
+def _print(val: Any, do_print: bool = True):
     # Helper function
     if do_print:
         print(val, flush=True)
 
 
-def is_camel_case(string, do_print=True):
+def is_camel_case(string: str, do_print: bool = True) -> bool:
     """
     Check if the given string is in CamelCase
 
@@ -216,7 +195,7 @@ def is_camel_case(string, do_print=True):
     return True
 
 
-def is_snake_case(string, do_print=True):
+def is_snake_case(string: str, do_print: bool = True) -> bool:
     """
     Checks if the given string is snake_case
 
@@ -233,7 +212,7 @@ def is_snake_case(string, do_print=True):
     return True
 
 
-def is_filesystem_safe(string):
+def is_filesystem_safe(string: str) -> bool:
     """
     Generic check function for if a string is filesystem safe, limits to a-z A-Z 0-9 '_' '-'
 

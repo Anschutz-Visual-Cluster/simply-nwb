@@ -4,11 +4,13 @@ import shutil
 import time
 import glob
 from threading import Thread
+from typing import Callable
+
 from fastcrc import crc64
 
 
 class CopyThread(Thread):
-    def __init__(self, root, src_pth, dst, filename, do_del):
+    def __init__(self, src_pth: str, dst: str, filename: str, do_del: bool):
         """
         Create a thread to copy an object to a destination. obj could be a file or directory
 
@@ -39,7 +41,7 @@ class CopyThread(Thread):
 
 
 class OneWayFileSync(object):
-    def __init__(self, source_directory, destination_directory, watch_file_glob, interval=5, delete_on_copy=False):
+    def __init__(self, source_directory: str, destination_directory: str, watch_file_glob: str, interval: int = 5, delete_on_copy: bool = False):
         """
         Create a new FileSync instance, to automatically copy files from src to dest, that match a file glob queried at an interval.
         Can provide a string for watch_file_glob or a dict. The dict will be in format::
@@ -87,7 +89,7 @@ class OneWayFileSync(object):
         # Register stopping function with sigint for ctrl+c killing
         signal.signal(signal.SIGINT, self.stop)
 
-        def gen_process_func(fglob, data):
+        def gen_process_func(fglob: str, data: dict) -> Callable[[str], str]:
             if not data:  # Data passed in was just {}
                 def process(fn):
                     return fn
@@ -106,7 +108,7 @@ class OneWayFileSync(object):
             fglob: gen_process_func(fglob, keydata) for fglob, keydata in watch_file_glob.items()
         }
 
-    def _check_stop(self):
+    def _check_stop(self) -> bool:
         return self._stopped
 
     def stop(self, *args, **kwargs):
@@ -121,11 +123,11 @@ class OneWayFileSync(object):
         print("Waiting for current copy operations to finish..")
         self._stopped = True
 
-    def _calc_checksum(self, filename):
+    def _calc_checksum(self, filename: str) -> str:
         io = open(filename, "rb")
-        hash = crc64.ecma_182(io.read())
+        hsh = crc64.ecma_182(io.read())
         io.close()
-        return hash
+        return hsh
 
     def start(self):
         """
@@ -153,7 +155,7 @@ class OneWayFileSync(object):
                             continue
                         else:
                             print(f"New file '{file}' detected")
-                            CopyThread(self.src, file_path, self.dst, new_filename, self.delete).start()
+                            CopyThread(file_path, self.dst, new_filename, self.delete).start()
                             if not self.delete:
                                 file_hashmap[fhash] = file
                     else:
@@ -161,7 +163,7 @@ class OneWayFileSync(object):
                             continue
                         else:
                             print(f"New folder '{file}' detected")
-                            CopyThread(self.src, file_path, self.dst, new_filename, self.delete).start()
+                            CopyThread(file_path, self.dst, new_filename, self.delete).start()
                             if not self.delete:
                                 file_hashmap[file] = file
             time.sleep(self.interval)

@@ -1,3 +1,5 @@
+from datetime import datetime
+from typing import Optional, Any
 from uuid import uuid4
 import os
 import glob
@@ -23,29 +25,22 @@ from simply_nwb.util import warn_on_name_format, inspect_nwb_obj, nwb_write, pan
 
 
 class SimpleNWB(object):
-    _REQUIRED_ARGS = [
-        "session_description",
-        "session_start_time",
-        "experimenter",
-        "lab",
-        "experiment_description"
-    ]
 
     @staticmethod
     def create_nwb(
-            session_description=None,
-            session_start_time=None,
-            experimenter=None,
-            lab=None,
-            experiment_description=None,
-            institution=None,
+            session_description: str,
+            session_start_time: datetime,
+            experimenter: [str],
+            lab: str,
+            experiment_description: str,
+            institution: str,
             # Optional
-            identifier=None,
-            subject=None,
-            session_id=None,
-            keywords=None,
-            related_publications=None
-    ):
+            identifier: Optional[str] = None,
+            subject: Optional[Subject] = None,
+            session_id: Optional[str] = None,
+            keywords: Optional[list[str]] = None,
+            related_publications: Optional[str] = None
+    ) -> NWBFile:
         """
         Create a new nwbfile from the given params. More infor here https://pynwb.readthedocs.io/en/stable/pynwb.file.html#pynwb.file.NWBFile
 
@@ -60,46 +55,39 @@ class SimpleNWB(object):
         :param session_id: Optional lab-specific session id, if not supplied will be generated
         :param keywords: Optional list of keywords e.g ["keyword1", "keyword2", ...]
         :param related_publications: Optional related publications in a list of the DOI, URL, PMID etc ["DOI:1234/asdf"]
-        :return:
+        :return: NWBFile
         """
-        for arg in SimpleNWB._REQUIRED_ARGS:
-            # Required args
-            if locals()[arg] is None:
-                raise ValueError("Did not provide '{}' to SimpleNWB()!".format(arg))
-            if institution is None:
-                raise ValueError("Must provide institution!")
+        # Optional args
+        if identifier is None:
+            identifier = str(uuid4())
+        if session_id is None:
+            session_id = str(uuid4())
+        if isinstance(subject, dict):
+            subject = Subject(**subject)
+        elif not isinstance(subject, Subject) and subject is not None:
+            raise ValueError("'subject' argument must either be a dict or a pynwb.file.Subject type!")
 
-            # Optional args
-            if identifier is None:
-                identifier = str(uuid4())
-            if session_id is None:
-                session_id = str(uuid4())
-            if isinstance(subject, dict):
-                subject = Subject(**subject)
-            elif not isinstance(subject, Subject) and not subject is None:
-                raise ValueError("'subject' argument must either be a dict or a pynwb.file.Subject type!")
+        if keywords is None:
+            keywords = []
 
-            if keywords is None:
-                keywords = []
+        nwb_kwargs = {
+            "identifier": identifier,
+            "session_description": session_description,
+            "session_start_time": session_start_time,
+            "experimenter": experimenter,
+            "lab": lab,
+            "subject": subject,
+            "experiment_description": experiment_description,
+            "session_id": session_id,
+            "institution": institution,
+            "keywords": keywords,
+            "related_publications": related_publications
+        }
 
-            nwb_kwargs = {
-                "identifier": identifier,
-                "session_description": session_description,
-                "session_start_time": session_start_time,
-                "experimenter": experimenter,
-                "lab": lab,
-                "subject": subject,
-                "experiment_description": experiment_description,
-                "session_id": session_id,
-                "institution": institution,
-                "keywords": keywords,
-                "related_publications": related_publications
-            }
-
-            return NWBFile(**nwb_kwargs)
+        return NWBFile(**nwb_kwargs)
 
     @staticmethod
-    def inspect_filename(nwbfilename):
+    def inspect_filename(nwbfilename: str) -> list[Any]:
         """
         Inspect the given NWBFile from filename
 
@@ -111,7 +99,7 @@ class SimpleNWB(object):
         return results
 
     @staticmethod
-    def inspect_obj(nwbfile):
+    def inspect_obj(nwbfile: NWBFile) -> list[Any]:
         """
         Inspect the given NWBFile object
 
@@ -123,18 +111,19 @@ class SimpleNWB(object):
         return results
 
     @staticmethod
-    def write(nwbfile, filename=None):
+    def write(nwbfile: NWBFile, filename: Optional[str] = None) -> NWBFile:
         """
         Write the give NWBFile object to file
 
         :param nwbfile: NWBFile object to write
         :param filename: path to file to write, WILL OVERWRITE!
-        :return: None
+        :return: NWBFile
         """
         nwb_write(nwbfile, filename)
+        return nwbfile
 
     @staticmethod
-    def add_to_processing_module(nwbfile, module_name=None, module_description=None, data=None):
+    def add_to_processing_module(nwbfile: NWBFile, data: Any, module_name: Optional[str] = None, module_description: Optional[str] = None) -> NWBFile:
         """
         Add data to a processing module, automatically creating it if it doesn't already exist
 
@@ -142,7 +131,7 @@ class SimpleNWB(object):
         :param module_name: Name of the processing module to create or use
         :param module_description: Description of the module, if not provided will be auto generated
         :param data: Data to be added to the processing module
-        :return: None
+        :return: NWBFile
         """
         if module_name is None:
             raise ValueError("Must provide module name argument!")
@@ -157,24 +146,25 @@ class SimpleNWB(object):
             pmodule = nwbfile.create_processing_module(name=module_name, description=module_description)
 
         pmodule.add(data)
+        return nwbfile
 
     @staticmethod
     def tif_add_as_processing_imageseries(
-            nwbfile,
-            name=None,
-            processing_module_name=None,
-            numpy_data=None,
-            sampling_rate=None,
-            description=None,
-            starting_time=0.0,
-            chunking=True,
-            compression=True
-    ):
+            nwbfile: NWBFile,
+            name: str,
+            processing_module_name: str,
+            numpy_data: Any,
+            sampling_rate: float,
+            description: str,
+            starting_time: float = 0.0,
+            chunking: bool = True,
+            compression: bool = True
+    ) -> NWBFile:
         """
 
         Add a numpy array as a processing module with image data, meant to work in conjunction with the tif reader utility
 
-        :param nwbfile: NWBFile to add the mp4 data to
+        :param nwbfile: NWBFile to add the tif data to
         :param name: Name of the movie
         :param numpy_data: data, can be np.memmap
         :param processing_module_name: Name of the processing module to append or create to add the images to
@@ -183,17 +173,8 @@ class SimpleNWB(object):
         :param starting_time: Starting time of this movie, relative to experiment start. Defaults to 0.0
         :param chunking: Optional chunking for large files, defaults to True
         :param compression: Optional compression for large files, defaults to True
+        :return: NWBFile
         """
-        if name is None:
-            raise ValueError("Must supply name argument for the name of the ImageSeries!")
-        if processing_module_name is None:
-            raise ValueError("Must supply processing_module_name argument!")
-        if numpy_data is None:
-            raise ValueError("Must supply numpy_data for insert into ImageSeries!")
-        args = (sampling_rate, description, starting_time, chunking, compression)
-        if None in args:
-            raise ValueError(f"Missing argument, got None in args {str(args)}")
-
         images = ImageSeries(
             name=name,
             data=H5DataIO(
@@ -214,19 +195,20 @@ class SimpleNWB(object):
             module_description=description,
             data=images
         )
+        return nwbfile
 
     @staticmethod
     def mp4_add_as_acquisition(
-            nwbfile,
-            name=None,
-            numpy_data=None,
-            frame_count=None,
-            sampling_rate=None,
-            description=None,
-            starting_time=0.0,
-            chunking=True,
-            compression=True
-    ):
+            nwbfile: NWBFile,
+            name: str,
+            numpy_data: Any,
+            frame_count: float,
+            sampling_rate: float,
+            description: str,
+            starting_time: float = 0.0,
+            chunking: bool = True,
+            compression: bool = True
+    ) -> NWBFile:
         """
         Add a numpy array as acquisition data, meant to work in conjunction with the mp4 reader utility
 
@@ -239,7 +221,7 @@ class SimpleNWB(object):
         :param starting_time: Starting time of this movie, relative to experiment start. Defaults to 0.0
         :param chunking: Optional chunking for large files, defaults to True
         :param compression: Optional compression for large files, defaults to True
-        :return: None
+        :return: NWBFile
         """
         if name is None:
             raise ValueError("Must supply name argument for the name of the ImageSeries!")
@@ -264,15 +246,16 @@ class SimpleNWB(object):
         )
 
         nwbfile.add_acquisition(mp4_timeseries)
+        return nwbfile
 
     @staticmethod
     def processing_add_dict(
-            nwbfile,
-            processed_name=None,
-            processing_module_name=None,
-            processed_description=None,
-            data_dict=None,
-            uneven_columns=False):
+            nwbfile: NWBFile,
+            processed_name: str,
+            data_dict: dict,
+            processed_description: str,
+            processing_module_name: Optional[str] = None,
+            uneven_columns: bool = False) -> NWBFile:
         """
         Add a processed dict into the NWB that doesn't fit in any other part of the NWB. MAKE SURE YOU CANNOT ADD IT ELSEWHERE BEFORE USING THIS FUNC!
 
@@ -282,13 +265,8 @@ class SimpleNWB(object):
         :param processed_description: description of the processed data
         :param data_dict: dict data to add
         :param uneven_columns: Set this to True if the keys of the dict have different lengths
+        :return: NWBFile
         """
-        if processed_name is None:
-            raise ValueError("Must supply processed_name argument!")
-        if processed_description is None:
-            raise ValueError("Must supply processed_description argument!")
-        if data_dict is None or not isinstance(data_dict, dict):
-            raise ValueError("Make sure to supply argument data_dict and it should be a dict type!")
         if not processing_module_name:
             processing_module_name = "misc"
 
@@ -309,14 +287,15 @@ class SimpleNWB(object):
                 description=processed_description,
                 data_interfaces=data_interfaces
             )
+        return nwbfile
 
     @staticmethod
     def processing_add_dataframe(
-            nwbfile,
-            processed_name=None,
-            processed_description=None,
-            data=None
-    ):
+            nwbfile: NWBFile,
+            processed_name: str,
+            processed_description: str,
+            data: pd.DataFrame
+    ) -> NWBFile:
         """
         Add a processed pandas Dataframe into the NWB that doesn't fit in any other part of the NWB. MAKE SURE YOU CANNOT ADD IT ELSEWHERE BEFORE USING THIS FUNC!
 
@@ -324,12 +303,8 @@ class SimpleNWB(object):
         :param processed_name: Name of the processing module
         :param processed_description: description of the processed data
         :param data: Pandas Dataframe data to add
-        :return: None
+        :return: NWBFile
         """
-        if processed_name is None:
-            raise ValueError("Must provide processed_name argument!")
-        if processed_description is None:
-            raise ValueError("Must provide processed_description argument!")
         if data is None or not isinstance(data, pd.DataFrame):
             raise ValueError("data argument must be Pandas Dataframe!")
 
@@ -347,29 +322,30 @@ class SimpleNWB(object):
                 description=processed_description,
                 data_interfaces=[data_interface]
             )
+        return nwbfile
 
     @staticmethod
     def two_photon_add_data(
-            nwbfile,
-            device_name=None,
-            device_description=None,
-            device_manufacturer=None,
-            optical_channel_description=None,
-            optical_channel_emission_lambda=None,
-            imaging_name=None,
-            imaging_rate=None,
-            excitation_lambda=None,
-            indicator=None,
-            location=None,
-            grid_spacing=None,
-            grid_spacing_unit=None,
-            origin_coords=None,
-            origin_coords_unit=None,
-            two_photon_unit=None,
-            two_photon_rate=None,
-            photon_series_name=None,
-            image_data=None,
-    ):
+            nwbfile: NWBFile,
+            device_name: str,
+            device_description: str,
+            device_manufacturer: str,
+            optical_channel_description: str,
+            optical_channel_emission_lambda: float,
+            imaging_name: str,
+            imaging_rate: float,
+            excitation_lambda: float,
+            indicator: str,
+            location: str,
+            grid_spacing: list[float],
+            grid_spacing_unit: str,
+            origin_coords: list[float],
+            origin_coords_unit: str,
+            two_photon_unit: str,
+            two_photon_rate: float,
+            photon_series_name: str,
+            image_data: Any,
+    ) -> NWBFile:
         """
         Add images from a two photon microscope to an NWB with metadata.
         Load TIF images easily with the simply_nwb.acquisition.tools.tif module
@@ -394,41 +370,8 @@ class SimpleNWB(object):
         :param two_photon_rate: two photon sampling rate in Hz
         :param photon_series_name: Name of the two photon series for storage
         :param image_data: Numpy array of the data in shape (samples, xres, yres, channels) if only one channel, can omit
-        :return:
+        :return: NWBFile
         """
-
-        if device_name is None:
-            raise ValueError("Must supply device_name argument!")
-        if device_description is None:
-            raise ValueError("Must supply device_description argument!")
-        if device_manufacturer is None:
-            raise ValueError("Must supply device_manufacturer argument!")
-        if optical_channel_description is None:
-            raise ValueError("Must supply optical_channel_description argument!")
-        if optical_channel_emission_lambda is None:
-            raise ValueError("Must supply optical_channel_emission_lambda argument!")
-        if imaging_name is None:
-            raise ValueError("Must supply imaging_name argument!")
-        if imaging_rate is None or not isinstance(imaging_rate, float):
-            raise ValueError("Must supply imaging_rate, and as a float!")
-        if excitation_lambda is None:
-            raise ValueError("Must supply excitation_lambda wavelength in nm!")
-        if indicator is None:
-            raise ValueError("Must supply indicator argument! e.g 'GFP'")
-        if location is None or not isinstance(location, str):
-            raise ValueError("Must supply location string argument")
-        if grid_spacing is None:
-            raise ValueError("Must supply grid_spacing argument!")
-        if grid_spacing_unit is None:
-            raise ValueError("Must supply grid_spacing_unit argument!")
-        if origin_coords is None:
-            raise ValueError("Must supply origin_coords argument!")
-        if origin_coords_unit is None:
-            raise ValueError("Must supply origin_coords_unit argument!")
-        if two_photon_unit is None:
-            raise ValueError("Must supply two_photon_unit argument!")
-        if two_photon_rate is None:
-            raise ValueError("Must supply two_photon_rate argument!")
         if image_data is None or not isinstance(image_data, np.ndarray):
             raise ValueError("Must supply image_data as numpy array!")
 
@@ -469,20 +412,21 @@ class SimpleNWB(object):
         )
 
         nwbfile.add_acquisition(two_photon_series)
+        return nwbfile
 
     @staticmethod
     def labjack_file_as_behavioral_data(
-            nwbfile,
-            labjack_filename=None,
-            name=None,
-            measured_unit_list=None,
-            start_time=None,
-            sampling_rate=None,
-            description=None,
-            behavior_module=None,
-            behavior_module_name=None,
-            comments="Labjack behavioral data"
-    ):
+            nwbfile: NWBFile,
+            labjack_filename: str,
+            name: str,
+            measured_unit_list: list[str],
+            start_time: float,
+            sampling_rate: float,
+            description: str,
+            behavior_module: Optional[Any] = None,
+            behavior_module_name: Optional[str] = None,
+            comments: str = "Labjack behavioral data"
+    ) -> NWBFile:
         """
         Add LabJack data to the NWBFile as a behavioral entry from a filename
 
@@ -496,7 +440,7 @@ class SimpleNWB(object):
         :param behavior_module: Optional NWB behavior module to add this data to, otherwise will create a new one e.g. nwbfile.processing["behavior"]
         :param behavior_module_name: optional module name to add this behavior to, if exists will append. will ignore if behavior_module arg is supplied
         :param comments: additional comments about the data
-        :return:
+        :return: NWBFile
         """
         return SimpleNWB.labjack_as_behavioral_data(
             nwbfile,
@@ -510,21 +454,20 @@ class SimpleNWB(object):
             behavior_module_name=behavior_module_name,
             comments=comments
         )
-        pass
 
     @staticmethod
     def labjack_as_behavioral_data(
-            nwbfile,
-            labjack_data=None,
-            name=None,
-            measured_unit_list=None,
-            start_time=None,
-            sampling_rate=None,
-            description=None,
-            behavior_module=None,
-            behavior_module_name=None,
-            comments="Labjack behavioral data"
-    ):
+            nwbfile: NWBFile,
+            labjack_data: dict,
+            name: str,
+            measured_unit_list: list[str],
+            start_time: float,
+            sampling_rate: float,
+            description: str,
+            behavior_module: Optional[Any],
+            behavior_module_name: Optional[str],
+            comments: str = "Labjack behavioral data"
+    ) -> NWBFile:
         """
         Add LabJack data to the NWBFile as a behavioral entry, given the labjack data
 
@@ -538,22 +481,8 @@ class SimpleNWB(object):
         :param behavior_module: Optional NWB behavior module to add this data to, otherwise will create a new one e.g. nwbfile.processing["behavior"]
         :param behavior_module_name: optional module name to add this behavior to, if exists will append. will ignore if behavior_module arg is supplied
         :param comments: additional comments about the data
-        :return:
+        :return: NWBFile
         """
-        if name is None:
-            raise ValueError("Must provide name argument for labjack data!")
-        if start_time is None:
-            raise ValueError("Must provide start_time argument for labjack data!")
-        if not isinstance(start_time, float):
-            raise ValueError("start_time must be a float! For example, if using a whole number use 5.0 instead of 5")
-        if sampling_rate is None:
-            raise ValueError("Must provide sampling_rate argument for labjack data!")
-        if not isinstance(sampling_rate, float):
-            raise ValueError("start_time must be a float! For example, if using a whole number use 5.0 instead of 5")
-        if description is None:
-            raise ValueError("Must provide description argument for labjack data!")
-        if labjack_data is None:
-            raise ValueError("Must provide labjack_data argument!")
         if not isinstance(labjack_data, dict) or "metadata" not in labjack_data or "data" not in labjack_data:
             raise ValueError("Argument labjack_data should be a dict with keys 'metadata' and 'data'!")
 
@@ -594,22 +523,22 @@ class SimpleNWB(object):
 
     @staticmethod
     def blackrock_spiketrains_as_units(
-            nwbfile,
+            nwbfile: NWBFile,
             # Required args
-            blackrock_filename=None,
-            device_description=None,
-            electrode_description=None,
-            electrode_location_description=None,
-            electrode_position=None,
-            electrode_impedance=None,
-            electrode_brain_region=None,
-            electrode_filtering_description=None,
-            electrode_reference_description=None,
+            blackrock_filename: str,
+            device_description: str,
+            electrode_description: str,
+            electrode_location_description: str,
+            electrode_position: tuple[float],
+            electrode_impedance: float,
+            electrode_brain_region: str,
+            electrode_filtering_description: str,
+            electrode_reference_description: str,
 
             # Optional args
-            device_manufacturer=None,
-            device_name=None,
-            electrode_group_name="electrodegroup0",
+            device_manufacturer: str = None,
+            device_name: str = None,
+            electrode_group_name: str ="electrodegroup0",
     ):
         """
         Automatically parse a blackrock NEV file from spike trains into an NWB file
@@ -627,36 +556,12 @@ class SimpleNWB(object):
         :param device_name: Name of the device used (optional)
         :param device_manufacturer: device manufacturer, will default to "BlackRock" (optional)
         :param electrode_group_name: name for the group of this electrode (optional)
-
-        :return: None, just a parsing function
+        :return: NWBFile
         """
-
-        if blackrock_filename is None:
-            raise ValueError("Must provide 'blackrock_filename' argument!")
-
-        # Device related arg checking and defaults
-        if device_description is None:
-            raise ValueError("Must provide a device description for the blackrock device used!")
         if device_name is None:
             device_name = "BlackRock device"
         if device_manufacturer is None:
             device_manufacturer = "BlackRock"
-
-        # Electrode related arg checking
-        if electrode_description is None:
-            raise ValueError("Must provide a description for the electrode used!")
-        if electrode_location_description is None:
-            raise ValueError("Must provide an electrode location description")
-        if electrode_position is None:
-            raise ValueError("Must provide a (x, y, z) location for the electrode")
-        if electrode_reference_description is None:
-            raise ValueError("Must provide 'electrode_reference_description' argument!")
-        if electrode_filtering_description is None:
-            raise ValueError("Must provide 'electrode_filtering_description' argument!")
-        if electrode_brain_region is None:
-            raise ValueError("Must provide 'electrode_brain_region' argument!")
-        if electrode_impedance is None:
-            raise ValueError("Must provide 'electrode_impedance' (in ohms) argument!")
 
         device = Device(
             name=device_name,
@@ -685,11 +590,13 @@ class SimpleNWB(object):
 
         blackrock_spiketrains = blackrock_all_spiketrains(blackrock_filename)
         # Add all spiketrains as units to the NWB
+
         [nwbfile.add_unit(spike_times=spike) for spike in blackrock_spiketrains]
+        return nwbfile
 
     @staticmethod
-    def p_erg_add_folder(nwbfile, foldername=None, file_pattern=None, table_name=None, description=None,
-                         reformat_column_names=True):
+    def p_erg_add_folder(nwbfile: NWBFile, foldername: str, file_pattern: str, table_name: str, description: str,
+                         reformat_column_names: bool = True) -> NWBFile:
         """
         Add pERG data for each file into the NWB, from 'foldername' that matches 'file_pattern' into the NWB
         Example 'file_pattern' "\*txt"
@@ -702,14 +609,6 @@ class SimpleNWB(object):
         :param reformat_column_names: Reformat column names to a nicer format from raw
         :return: None
         """
-        if foldername is None:
-            raise ValueError("Must provide folder name argument!")
-        if file_pattern is None:
-            raise ValueError("Must provide file_pattern! Example: '*.txt'")
-        if table_name is None:
-            raise ValueError("Must provide 'table_name' to store data!")
-        if description is None:
-            raise ValueError("Must provide a description for the pERG data!")
 
         if not os.path.exists(foldername):
             raise ValueError(
@@ -729,9 +628,10 @@ class SimpleNWB(object):
                 reformat_column_names=reformat_column_names,
                 description=description
             )
+        return nwbfile
 
     @staticmethod
-    def p_erg_add_data(nwbfile, filename=None, table_name=None, description=None, reformat_column_names=True):
+    def p_erg_add_data(nwbfile: NWBFile, filename: str, table_name: str , description: str, reformat_column_names: bool = True) -> NWBFile:
         """
         Add pERG data into the NWB, from file, formatting it
 
@@ -740,20 +640,12 @@ class SimpleNWB(object):
         :param table_name: name of new table to insert the data into in the NWB
         :param description: Description of the data to add
         :param reformat_column_names: Reformat column names to a nicer format from raw
-        :return:
+        :return: NWBFile
         """
-        if filename is None:
-            raise ValueError("Invalid filename! Must provide argument")
-        if table_name is None:
-            raise ValueError("Must provide a name for the pERG table data!")
-        if description is None:
-            raise ValueError("Must provide a description for the pERG data!")
-
         warn_on_name_format(table_name)
 
         data_dict, metadata_dict = perg_parse_to_table(filename, reformat_column_names=reformat_column_names)
         data_dict_name = f"{table_name}_data"
-        metadata_dict_name = f"{table_name}_metadata"
 
         if data_dict_name in nwbfile.acquisition:
             nwbfile.acquisition[data_dict_name].add_row(data_dict)
@@ -791,3 +683,4 @@ class SimpleNWB(object):
             else:
                 nwbfile.acquisition[nwb_key].add_annotation(float(len(nwbfile.acquisition[nwb_key].data)),
                                                             meta_value[0])
+        return nwbfile

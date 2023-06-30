@@ -1,7 +1,7 @@
 import os
 
 
-def plaintext_metadata_read(filename=None, sep=":"):
+def plaintext_metadata_read(filename: str, sep: str = ":") -> {str: str}:
     """
     Read in data in a 'metadata' like format such as
 
@@ -12,8 +12,6 @@ def plaintext_metadata_read(filename=None, sep=":"):
     :param sep: Separator for keys and values, defaults to ':'
     :return: dict of metadata data
     """
-    if filename is None:
-        raise ValueError("Must provide filename argument!")
     if not os.path.exists(filename):
         raise ValueError(f"File '{filename}' not found in current working path '{os.getcwd()}")
 

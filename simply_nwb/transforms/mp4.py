@@ -6,7 +6,8 @@ import cv2
 import imageio.v3 as iio
 import uuid
 
-def _get_framecount(filename):
+
+def _get_framecount(filename: str) -> int:
     try:
         movie = cv2.VideoCapture(filename)
         val = movie.get(cv2.CAP_PROP_FRAME_COUNT)
@@ -19,7 +20,7 @@ def _get_framecount(filename):
         return 1000000
 
 
-def mp4_read_data(filename=None):
+def mp4_read_data(filename: str) -> (np.ndarray, int):
     """
     Read the data from an MP4 file into a numpy array and get the framecount
 

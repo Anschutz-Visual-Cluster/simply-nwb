@@ -1,5 +1,7 @@
 import os
 import shutil
+from typing import Optional
+
 import pendulum
 from simply_nwb.util import is_camel_case, is_snake_case, is_filesystem_safe, _print
 import glob
@@ -14,12 +16,12 @@ class NWBTransfer(object):
 
     def __init__(
             self,
-            nwb_file_location=None,
-            raw_data_folder_location=None,
-            lab_name=None,
-            project_name=None,
-            session_name=None,
-            transfer_location_root=None
+            nwb_file_location: str,
+            raw_data_folder_location: str,
+            lab_name: str,
+            project_name: str,
+            session_name: str,
+            transfer_location_root: str
     ):
         """
         Create a transfer helper object to copy the NWB and raw data over to the storage location
@@ -31,12 +33,7 @@ class NWBTransfer(object):
         :param session_name: Name for the session, will automatically add 'day_month_year_time' suffix. Should also be in snake_case
         :param transfer_location_root: Location of the storage system, if mounted locally can use Drive:\\ or network if network attached use \\domain\\folder
         """
-        if nwb_file_location is None:
-            raise ValueError("Must supply nwb_file_location!")
-        if not os.path.exists(nwb_file_location) or not os.path.isfile(nwb_file_location):
-            raise ValueError("Make sure nwb_file_location exists and is a .nwb file!")
-        if not raw_data_folder_location:
-            raise ValueError("Must supply raw_data_folder_location!")
+
         if not os.path.exists(raw_data_folder_location) or not os.path.isdir(raw_data_folder_location):
             raise ValueError("Make sure raw_data_folder_location exists and is a folder!")
         if not is_camel_case(lab_name):
@@ -97,7 +94,7 @@ class NWBTransfer(object):
             self.zip_file_full_name
         )
 
-    def upload(self, zip_location_override=None, do_print=True):
+    def upload(self, zip_location_override: Optional[str] = None, do_print: bool = True) -> None:
         """
         Upload the NWB and raw data to the storage location, with an optional zip override. Can set do_print to False
         to silence this method
@@ -130,23 +127,21 @@ class NWBTransfer(object):
         shutil.copy(self.nwb_file_location, self.nwb_destination_filename)
 
     @staticmethod
-    def make_raw_zip_filename(session_name):
+    def make_raw_zip_filename(session_name: str) -> str:
         return "{}_{}".format(
             session_name,
             NWBTransfer.make_timestamp_filename_suffix()
         )
-        pass
 
     @staticmethod
-    def make_nwb_filename(session_name):
+    def make_nwb_filename(session_name: str) -> str:
         return "{}_{}.nwb".format(
             session_name,
             NWBTransfer.make_timestamp_filename_suffix()
         )
-        pass
 
     @staticmethod
-    def make_timestamp_filename_suffix():
+    def make_timestamp_filename_suffix() -> str:
         now = pendulum.now()
         timestamp_data = {
             "day": now.day,

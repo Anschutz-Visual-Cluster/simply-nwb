@@ -9,5 +9,5 @@ def nwb_perg():
     SimpleNWB.p_erg_add_folder(nwb, foldername="../data/pg_folder", file_pattern="*.txt", table_name="p_ergs", description="test desc")
 
     t = nwb.acquisition["perg_table_data"]["average"][:]
-    t = nwb.acquisition["perg_table_metadata"]["channel"][:]
-    return nwb, []
+    t = nwb.acquisition["meta_channel"].data[:]
+    return nwb, ["check_regular_timestamps"]

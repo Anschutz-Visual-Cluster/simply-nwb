@@ -4,7 +4,7 @@ from io import StringIO
 from simply_nwb.util import warn_on_name_format
 
 
-def _format_column_name(column_name):
+def _format_column_name(column_name: str) -> str:
     # Internal helper function to help rename columns
     # e.g. 'Data Pnt(ms):' -> 'data_pnt_ms'
     #
@@ -28,7 +28,7 @@ def _format_column_name(column_name):
     return column_name
 
 
-def _parse_perg_metadata(filename):
+def _parse_perg_metadata(filename: str) -> pd.DataFrame:
     # Helper func
     divider_count = 0
     line_datas = []
@@ -48,7 +48,7 @@ def _parse_perg_metadata(filename):
         return pd.read_csv(StringIO("\n".join(line_datas))).T  # Transpose since data is formatted sideways
 
 
-def _reformat_column_names(panda_data):
+def _reformat_column_names(panda_data: pd.DataFrame) -> pd.DataFrame:
     # Helper function to rename the columns in a pandas dataframe
     # :param panda_data: pd dataframe
     # :return: pd dataframe with different column names, formatted nicer
@@ -63,7 +63,7 @@ def _reformat_column_names(panda_data):
     return panda_data
 
 
-def _parse_perg_data(filename):
+def _parse_perg_data(filename: str) -> pd.DataFrame:
     # Helper func to parse out only the data, a separate func will parse out metadata
     # :param filename: filename of the pERG file
     # :return: pandas dataframe
@@ -83,7 +83,7 @@ def _parse_perg_data(filename):
         return pd.read_csv(StringIO("\n".join(data)))
 
 
-def perg_parse_to_table(filename=None, reformat_column_names=True):
+def perg_parse_to_table(filename: str, reformat_column_names: bool = True) -> (dict, dict):
     """
     Parse the output of a pERG reading into a dict
 

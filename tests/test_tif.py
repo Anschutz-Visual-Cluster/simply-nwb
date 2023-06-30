@@ -13,13 +13,13 @@ def tif_test():
         file_glob="Image.tif"
     )
 
-    rrr = tif_read_directory("E:\\tifs\\folder_formatted", filename_glob="*ome.tif")
+    rrr = tif_read_directory("E:\\tifs\\folder_formatted", filename_glob="*014_*ome.tif")
     tw = 2
 
 
 def nwb_two_photon():
     nwb = nwb_gen()
-    data = tif_read_directory("E:\\tifs\\folder_formatted", filename_glob="*ome.tif")
+    data = tif_read_directory("E:\\tifs\\folder_formatted", filename_glob="*014_*ome.tif")
 
     SimpleNWB.two_photon_add_data(
         nwb,

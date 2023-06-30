@@ -3,7 +3,7 @@ import os
 from io import StringIO
 
 
-def csv_load_dataframe(filename=None, **kwargs):
+def csv_load_dataframe(filename: str, **kwargs) -> pd.DataFrame:
     """
     Simple wrapper around pd.read_csv for file checks
 
@@ -19,7 +19,7 @@ def csv_load_dataframe(filename=None, **kwargs):
     return pd.read_csv(filename, **kwargs)
 
 
-def csv_load_dataframe_str(strdata=None, **kwargs):
+def csv_load_dataframe_str(strdata: str, **kwargs) -> pd.DataFrame:
     """
     Simple wrapper around pd.read_csv for a string rather than a file
 
