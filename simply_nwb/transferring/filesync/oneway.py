@@ -4,7 +4,7 @@ import shutil
 import time
 import glob
 from threading import Thread
-from typing import Callable
+from typing import Callable, Union
 
 from fastcrc import crc64
 
@@ -41,7 +41,9 @@ class CopyThread(Thread):
 
 
 class OneWayFileSync(object):
-    def __init__(self, source_directory: str, destination_directory: str, watch_file_glob: str, interval: int = 5, delete_on_copy: bool = False):
+    def __init__(self, source_directory: str, destination_directory: str,
+                 watch_file_glob: Union[dict, str],
+                 interval: int = 5, delete_on_copy: bool = False):
         """
         Create a new FileSync instance, to automatically copy files from src to dest, that match a file glob queried at an interval.
         Can provide a string for watch_file_glob or a dict. The dict will be in format::
