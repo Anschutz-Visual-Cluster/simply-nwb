@@ -50,3 +50,6 @@ def transfer_nwb_test():
     shutil.rmtree("../data/MyLabName")
     os.mkdir("../data/MyLabName")
     tw = 2
+
+
+# transfer_nwb_test()

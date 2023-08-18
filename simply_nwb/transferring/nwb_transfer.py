@@ -57,18 +57,23 @@ class NWBTransfer(object):
         self.zip_file_name_no_extension = NWBTransfer.make_raw_zip_filename(session_name)
         self.zip_file_full_name = f"{self.zip_file_name_no_extension}.zip"
 
-        self.destination_path_root = os.path.join(
+        self.lab_root = os.path.join(
             os.path.abspath(transfer_location_root),
             lab_name,
+        )
+
+        self.project_destination_path_root = os.path.join(
+            self.lab_root,
             project_name
         )
 
-        self.nwbs_folder = os.path.abspath(os.path.join(self.destination_path_root, "nwbs"))
-        self.raw_folder = os.path.abspath(os.path.join(self.destination_path_root, "raw"))
+        self.nwbs_folder = os.path.abspath(os.path.join(self.project_destination_path_root, "nwbs"))
+        self.raw_folder = os.path.abspath(os.path.join(self.project_destination_path_root, "raw"))
 
-        if not os.path.exists(self.destination_path_root):
-            print(f"Project dir '{self.destination_path_root}' doesn't exist, creating")
-            os.mkdir(self.destination_path_root)
+        if not os.path.exists(self.project_destination_path_root):
+            print(f"Project dir '{self.project_destination_path_root}' doesn't exist, creating")
+            os.mkdir(self.lab_root)
+            os.mkdir(self.project_destination_path_root)
             os.mkdir(self.nwbs_folder)
             os.mkdir(self.raw_folder)
 
@@ -83,13 +88,13 @@ class NWBTransfer(object):
                 f"Error: raw session '{session_name}' already exists in project '{project_name}'! Please make session names unique")
 
         self.nwb_destination_filename = os.path.join(
-            self.destination_path_root,
+            self.project_destination_path_root,
             "nwbs",
             self.nwb_filename
         )
 
         self.raw_zip_destination_filename = os.path.join(
-            self.destination_path_root,
+            self.project_destination_path_root,
             "raw",
             self.zip_file_full_name
         )
