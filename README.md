@@ -1,6 +1,6 @@
 # simply-nwb
 
-## ReadTheDocs [Link](https://simply-nwb.readthedocs.io/en/latest/index.html)
+# \*\*Read-The-Docs!\*\* [Link](https://simply-nwb.readthedocs.io/en/latest/index.html)
 
 ## Publishing a new version
 - Update the version number in `setup.py` try to use [sem ver](https://semver.org/) as a guide for which number to bump
