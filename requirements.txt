@@ -1,14 +1,14 @@
-pynwb ~= 2.3
-nwbinspector ~= 0.4
-neo ~= 0.12
+pynwb
+nwbinspector
+neo
 numpy
 pendulum
 pandas
 pyyaml
 opencv-python-headless
 Pillow
-imageio==2.30.0
+imageio
 av
 fastcrc
-dict-plus==0.3.4
+dict-plus
 #open-ephys-python-tools https://github.com/open-ephys/open-ephys-python-tools
