@@ -21,3 +21,9 @@ Transformations take raw data and turn it into a format more easy to manipulate.
 Some are even required to transform them into usable data, and can take a while to process.
 
 See the :doc:`examples` for how to use specific transforms.
+
+Also see
+========
+
+- `Conversion Script Video Tutorial <https://youtu.be/YjmdfZFW21A>`_
+- `FileSync Video Tutorial <https://youtu.be/eTpJiaoYsRc>`_
