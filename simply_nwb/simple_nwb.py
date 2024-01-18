@@ -6,13 +6,12 @@ import glob
 
 import numpy as np
 import pandas as pd
+import pynwb
 from hdmf.backends.hdf5 import H5DataIO
 from hdmf.common.table import DynamicTable
 from hdmf.common.table import VectorData
-from pynwb import NWBFile, TimeSeries
+from pynwb import NWBFile
 from pynwb.behavior import BehavioralEvents
-from pynwb.device import Device
-from pynwb.ecephys import ElectrodeGroup
 from pynwb.file import Subject
 from pynwb.image import ImageSeries
 from pynwb.misc import AnnotationSeries
@@ -111,15 +110,16 @@ class SimpleNWB(object):
         return results
 
     @staticmethod
-    def write(nwbfile: NWBFile, filename: Optional[str] = None) -> NWBFile:
+    def write(nwbfile: NWBFile, filename: str, verify_on_write: Optional[bool] = True) -> NWBFile:
         """
         Write the give NWBFile object to file
 
         :param nwbfile: NWBFile object to write
         :param filename: path to file to write, WILL OVERWRITE!
+        :param verify_on_write: Verify that *most* fields wrote correctly and the file didn't corrupt
         :return: NWBFile
         """
-        nwb_write(nwbfile, filename)
+        nwb_write(nwbfile, filename, verify_on_write)
         return nwbfile
 
     @staticmethod
@@ -523,39 +523,31 @@ class SimpleNWB(object):
 
     @staticmethod
     def blackrock_spiketrains_as_units(
-            nwbfile: NWBFile,
+            nwbfile: pynwb.file.NWBFile,
             # Required args
             blackrock_filename: str,
             device_description: str,
+            electrode_name: str,
             electrode_description: str,
             electrode_location_description: str,
-            electrode_position: tuple[float],
-            electrode_impedance: float,
-            electrode_brain_region: str,
-            electrode_filtering_description: str,
-            electrode_reference_description: str,
-
+            electrode_resistance: float,
             # Optional args
             device_manufacturer: str = None,
             device_name: str = None,
-            electrode_group_name: str ="electrodegroup0",
     ):
         """
         Automatically parse a blackrock NEV file from spike trains into an NWB file
+        Code created from tutorial: https://pynwb.readthedocs.io/en/stable/tutorials/domain/plot_icephys.html#sphx-glr-tutorials-domain-plot-icephys-py
 
         :param nwbfile: NWBFile object to add this data to
         :param blackrock_filename: Filename for the nev or nsX file of blackrock data (required)
         :param device_description: description of device (required)
+        :param electrode_name: Name of the electrode (required)
         :param electrode_description: description of electrode used (required)
         :param electrode_location_description: description of the electrode location (required)
-        :param electrode_position: stereotaxic position of this electrode group (x, y, z) (+y is inferior)(+x is posterior)(+z is right) (required)
-        :param electrode_impedance: the impedance of the electrode, in ohms (required)
-        :param electrode_brain_region: the location of electrode within the subject, brain region (required)
-        :param electrode_filtering_description: description of hardware filtering, including the filter name and frequency cutoffs (required)
-        :param electrode_reference_description: Description of the reference electrode and/or reference scheme used for this electrode, e.g.,"stainless steel skull screw" or "online common average referencing" (required)
+        :param electrode_resistance: the impedance/resistance of the electrode, in ohms (required)
         :param device_name: Name of the device used (optional)
         :param device_manufacturer: device manufacturer, will default to "BlackRock" (optional)
-        :param electrode_group_name: name for the group of this electrode (optional)
         :return: NWBFile
         """
         if device_name is None:
@@ -563,29 +555,18 @@ class SimpleNWB(object):
         if device_manufacturer is None:
             device_manufacturer = "BlackRock"
 
-        device = Device(
+        device = nwbfile.create_device(
             name=device_name,
             description=device_description,
             manufacturer=device_manufacturer
         )
 
-        electrode_group = ElectrodeGroup(
-            name=electrode_group_name,
+        nwbfile.create_icephys_electrode(
+            name=electrode_name,
+            device=device,
             description=electrode_description,
             location=electrode_location_description,
-            device=device,
-            position=electrode_position
-        )
-
-        nwbfile.add_electrode(
-            x=electrode_position[0],
-            y=electrode_position[1],
-            z=electrode_position[2],
-            imp=electrode_impedance,
-            location=electrode_brain_region,
-            filtering=electrode_filtering_description,
-            reference=electrode_reference_description,
-            group=electrode_group
+            resistance=str(electrode_resistance)
         )
 
         blackrock_spiketrains = blackrock_all_spiketrains(blackrock_filename)

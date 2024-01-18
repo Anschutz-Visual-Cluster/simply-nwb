@@ -1,24 +1,113 @@
 from typing import Any, Optional
 
 import pandas as pd
+import pendulum
 from hdmf.common import DynamicTable, VectorData
 from nwbinspector import inspect_nwbfile, inspect_nwbfile_object
 from pynwb import NWBHDF5IO, TimeSeries, NWBFile
 import warnings
 import re
 
+from pynwb.file import Subject
 
-def nwb_write(nwb_obj: NWBFile, filename: str):
+
+def compare_nwbfiles(nwbfile1: NWBFile, nwbfile2: NWBFile, name1: str, name2: str):
     """
-    Write an NWB object to a file on the local filesystem
+    Compare two nwbfiles, checking that they contain the same things, only check a handful of fields TODO?
+    This is useful when writing a file, want to ensure all our fields that successfully wrote are read in correctly.
+    If there is a difference, will throw a ValueError
+
+    :param nwbfile1: NWBFile 1 to compare
+    :param nwbfile2: NWBFile 2 to compare
+    :param name1: String name of NWBFile 1, used in error message only
+    :param name2: String name of NWBFile 2, used in error message only
+    """
+
+    fields_to_value_verify = [
+        # "experimenter",  # TODO handle ("a, b") != ["a, b"]
+        # "file_create_date", # TODO Add a flag to ignore timestamp? if comparing not on write
+        "institution"
+    ]
+
+    # Verify field values are the same
+    for f in fields_to_value_verify:
+        v1 = getattr(nwbfile1, f)
+        v2 = getattr(nwbfile2, f)
+        if v1 != v2:
+            raise ValueError(f"Difference '{name1}.{f}' != '{name2}.{f}' found! '{v1}' != '{v2}'")
+
+    fields_to_count_verify = [
+        "acquisition",
+        "devices",
+        "processing",
+    ]
+    # Verify that fields have the same count and names
+    for f in fields_to_count_verify:
+
+        fd1 = getattr(nwbfile1, f)  # fd1 - field data 1
+        fd2 = getattr(nwbfile2, f)
+
+        fds1 = set(list(fd1))  # fds1 - field data set 1
+        fds2 = set(list(fd2))
+        missing_entries = ",".join([str(v) for v in list(fds1.difference(fds2))])
+        intro = f"Difference between '{name1}.{f}' and '{name2}.{f}' found!"
+
+        if missing_entries:
+            raise ValueError(f"{intro} Entries in '{name1}' that are missing in '{name2}': '{missing_entries}'")
+
+        extra_entries = ",".join([str(v) for v in list(fds2.difference(fds1))])
+        if len(fd1) != len(fd2):
+            raise ValueError(f"{intro} Entries are not the same length! Extra entries in '{name2}' that don't exist in '{name1}': '{extra_entries}'")
+
+    # Check processing containers
+    nwb1_processing = getattr(nwbfile1, "processing")
+    nwb2_processing = getattr(nwbfile2, "processing")
+
+    for processing_module_name in list(nwb1_processing):
+        for container_name in list(nwb1_processing[processing_module_name].containers):
+            intro = f"Difference between '{name1}.processing.{processing_module_name}' and '{name2}.{processing_module_name}' found!"
+            try:
+                _ = nwb2_processing[processing_module_name][container_name]  # If value exists, call it good
+                pass
+            except KeyError:
+                raise ValueError(f"{intro} Entry '{processing_module_name}.{container_name}' was found in '{name1}' but not in '{name2}'!")
+
+    if nwbfile1.units is None:
+        if nwbfile2.units is not None:
+            raise ValueError(f"Error, '{name1}.units' is empty but '{name2}.units' is not!")
+    else:
+        if nwbfile2.units is None:
+            raise ValueError(f"Error, '{name2}.units' is empty!")
+        else:
+            if len(nwbfile1.units) != len(nwbfile2.units):
+                raise ValueError(f"Error, '{name1}.units' and '{name2}.units' Are not the same length!")
+
+
+def nwb_write(nwb_obj: NWBFile, filename: str, verify: bool):
+    """
+    Write an NWB object to a file on the local filesystem, and verify the contents were written correctly and the file
+    isn't corrupted
 
     :param nwb_obj: pynwb.file.NWBFile object
     :param filename: path of a local file, doesn't need to exist
+    :param verify: Verify that *most* fields wrote correctly and the file didn't corrupt
     :return: None
     """
+
     io = NWBHDF5IO(filename, mode="w")
     io.write(nwb_obj)
     io.close()
+
+    if verify:
+        from pynwb import NWBHDF5IO as nwbio  # Want to load file to check that it didn't corrupt
+        try:
+            test_nwb = nwbio(filename).read()
+            # Also note that your data can just 'be missing' because NWB decided not to write it 'for some reason'
+        except Exception as e:
+            warnings.warn(f"File is corrupted! NWB lets you write data that it won't read correctly, check your input data!")
+            raise e
+
+        compare_nwbfiles(nwb_obj, test_nwb, "InMemoryNWB", "WrittenFileNWB")
 
 
 def warn_on_name_format(name_value: str, context_str: str = "") -> bool:
@@ -224,3 +313,38 @@ def is_filesystem_safe(string: str) -> bool:
     if not match:
         return False
     return True
+
+
+def age_str_from_birthday(birthday_str: str) -> str:
+    """
+    Create a ISO-8601 Period date string from a birthday. Interprets most date formats correctly, to ensure
+    correct behavior, format 'MM-DD-YYYY' is recommended
+
+    :param birthday_str: String of birthday
+    """
+    birth = pendulum.parse(birthday_str, strict=False)
+    now = pendulum.now()
+    diff_in_days = now.diff(birth).days
+    return f"P{diff_in_days}D"  # P90D is 90 days period
+
+
+def create_mouse_subject(subject_id: str, birthday_str: str, strain: str, sex: str, desc: str) -> Subject:
+    """
+    Create a Subject object, simple wrapper
+
+    :param subject_id: ID to use to uniquely identify a mouse
+    :param birthday_str: String of birthday of the mouse
+    :param strain: Strain of the mouse
+    :param sex: Mouse sex
+    :param desc: Description of the mouse
+    """
+    return Subject(
+        subject_id=subject_id,
+        age=age_str_from_birthday(birthday_str),
+        strain=strain,
+        sex=sex,
+        description=desc
+    )
+
+
+
