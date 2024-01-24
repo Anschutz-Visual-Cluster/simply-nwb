@@ -225,7 +225,8 @@ def load_unit_data(recording_path: str, probe_depth: int = 3840, site_positions:
     :param spikes_filename: Spikes filename, defaults to spike_secs.npy
     :param aligned: bool if the spike times are aligned along the sampling rate, if not will be converted
     :param df: Return data as a dataframe
-    :param
+
+    :return: Dict or Dataframe of the unit data
     """
 
     if site_positions is None:
@@ -311,7 +312,7 @@ def load_unit_data_from_phy(recording_path: str, chanmap: Optional[dict] = None,
     searches the folder for the chanmap the KS used, or searches one folder up for it
 
     :param recording_path: Path to the recording data
-    :param chanmap: Channel map, if not provided will attempt to find a file matching '*hanMap.mat'
+    :param chanmap: Channel map, if not provided will attempt to find a file matching '\*hanMap.mat'
     :param insertion_angle: insertion angle
     :param insertion_depth: insertion depth
 

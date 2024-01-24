@@ -36,6 +36,14 @@ simply\_nwb.transforms.mp4 module
    :undoc-members:
    :show-inheritance:
 
+simply\_nwb.transforms.neuropixels module
+-----------------------------------------
+
+.. automodule:: simply_nwb.transforms.neuropixels
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 simply\_nwb.transforms.p\_erg module
 ------------------------------------
 
