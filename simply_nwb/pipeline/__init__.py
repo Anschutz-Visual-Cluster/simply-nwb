@@ -72,5 +72,51 @@ saccade_values = sess.pull("LabelSaccades.saccades")  # Pull out the data
 # ... do graphing / analysis things
 
 """
+from typing import Optional
 
-print(":P")
+from simply_nwb.pipeline.enrichments import Enrichment
+from spencer_funcs.autodiscovery import discover_wrapper
+
+
+class NWBSession(object):
+    def __init__(self, filename, custom_enrichments: Optional[list[type]] = None):
+        # TODO Look up all enrichments here, use custom_enrichments for enrichments not defined in this package
+        pass
+        self.nwb = 8  # TODO get actual nwb
+
+        self.__builtin_enrichments = globals()["__discover_enrichments"]()   # Access the hidden func DONT DO THIS :)
+        if custom_enrichments is not None:
+            for cust in custom_enrichments:
+                if not isinstance(cust, type):
+                    raise ValueError(f"Custom Enrichment {cust} passed in must be a classtype and inherit from Enrichment! Use [MyEnrichment, ..] NOT [MyEnrichment(), ..]")
+                # Not going to bother to check if the object type passed is actually a subclass TODO?
+                self.__builtin_enrichments[cust.get_name()] = cust
+
+        self.__enrichments = set()  # list of str names of current enrichments in the nwb file
+        # TODO crawl nwb using __builtin_enrichments and fill out __enrichments with existing ones
+        tw = 2
+
+    def enrich(self, enrichment: Enrichment):
+        if not isinstance(enrichment, Enrichment):
+            raise ValueError(f"Invalid enrichment type received! Got {type(enrichment)}")
+
+        enrichment.run(self.nwb)
+        self.__enrichments.add(enrichment.get_name())
+
+
+@discover_wrapper
+def __discover_enrichments():  # Hide this func
+    def get_enrichment_name(cls):
+        if hasattr(cls, "get_name"):
+            return cls.get_name()
+        else:
+            return None
+
+    return [
+        "simply_nwb.pipeline.enrichments",
+        Enrichment,
+        get_enrichment_name
+    ]
+
+
+tw = 2
