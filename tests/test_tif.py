@@ -17,6 +17,20 @@ def tif_test():
     tw = 2
 
 
+def nwb_basic_tif():
+    imgarr = tif_read_image("E:\\tifs\\folder_formatted\\jan9_cup_M2E2_2_MMStack_1-Pos000_000.ome.tif")
+    imgarr = imgarr[None, :]
+
+    nwb = SimpleNWB.test_nwb()
+    SimpleNWB.tif_add_as_processing_imageseries(
+        nwb,
+        "test",
+        "ttt",
+        imgarr,
+        1.0,
+        "asdf"
+    )
+
 def nwb_two_photon():
     nwb = nwb_gen()
     data = tif_read_directory("E:\\tifs\\folder_formatted", filename_glob="*014_*ome.tif")

@@ -347,4 +347,20 @@ def create_mouse_subject(subject_id: str, birthday_str: str, strain: str, sex: s
     )
 
 
+def date_to_mouse_age(date_str: Optional[str]) -> Optional[str]:
+    """
+    Convert a date into an ISO-8601 period time value
 
+    :param date_str: string of the date, should be pendulum parsable
+    :return: string like 'P90D'
+    """
+    if date_str is None:
+        return None
+
+    if date_str.lower() != "unknown":
+        mouse_age = "P" + str(pendulum.parse(date_str, strict=False).diff(
+            pendulum.now()).in_days()) + "D"  # How many days since birthday
+    else:
+        mouse_age = None
+
+    return mouse_age

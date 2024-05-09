@@ -1,5 +1,62 @@
+import pynwb
 from neo.io.blackrockio import BlackrockIO
 import numpy as np
+
+
+class _BlackrockMixin(object):
+    @staticmethod
+    def blackrock_spiketrains_as_units(
+            nwbfile: pynwb.file.NWBFile,
+            # Required args
+            blackrock_filename: str,
+            device_description: str,
+            electrode_name: str,
+            electrode_description: str,
+            electrode_location_description: str,
+            electrode_resistance: float,
+            # Optional args
+            device_manufacturer: str = None,
+            device_name: str = None,
+    ):
+        """
+        Automatically parse a blackrock NEV file from spike trains into an NWB file
+        Code created from tutorial: https://pynwb.readthedocs.io/en/stable/tutorials/domain/plot_icephys.html#sphx-glr-tutorials-domain-plot-icephys-py
+
+        :param nwbfile: NWBFile object to add this data to
+        :param blackrock_filename: Filename for the nev or nsX file of blackrock data (required)
+        :param device_description: description of device (required)
+        :param electrode_name: Name of the electrode (required)
+        :param electrode_description: description of electrode used (required)
+        :param electrode_location_description: description of the electrode location (required)
+        :param electrode_resistance: the impedance/resistance of the electrode, in ohms (required)
+        :param device_name: Name of the device used (optional)
+        :param device_manufacturer: device manufacturer, will default to "BlackRock" (optional)
+        :return: NWBFile
+        """
+        if device_name is None:
+            device_name = "BlackRock device"
+        if device_manufacturer is None:
+            device_manufacturer = "BlackRock"
+
+        device = nwbfile.create_device(
+            name=device_name,
+            description=device_description,
+            manufacturer=device_manufacturer
+        )
+
+        nwbfile.create_icephys_electrode(
+            name=electrode_name,
+            device=device,
+            description=electrode_description,
+            location=electrode_location_description,
+            resistance=str(electrode_resistance)
+        )
+
+        blackrock_spiketrains = blackrock_all_spiketrains(blackrock_filename)
+        # Add all spiketrains as units to the NWB
+
+        [nwbfile.add_unit(spike_times=spike) for spike in blackrock_spiketrains]
+        return nwbfile
 
 
 def blackrock_load_data(filename: str, raw: bool = False) -> list[dict]:

@@ -72,6 +72,7 @@ saccade_values = sess.pull("LabelSaccades.saccades")  # Pull out the data
 # ... do graphing / analysis things
 
 """
+import logging
 from typing import Optional
 
 from simply_nwb.pipeline.enrichments import Enrichment
@@ -80,6 +81,10 @@ from spencer_funcs.autodiscovery import discover_wrapper
 
 class NWBSession(object):
     def __init__(self, filename, custom_enrichments: Optional[list[type]] = None):
+        logging.basicConfig(level=logging.INFO)
+        self.logger = logging.getLogger("NWBSession")
+        self.logger.info("Test")
+
         # TODO Look up all enrichments here, use custom_enrichments for enrichments not defined in this package
         pass
         self.nwb = 8  # TODO get actual nwb
@@ -94,6 +99,7 @@ class NWBSession(object):
 
         self.__enrichments = set()  # list of str names of current enrichments in the nwb file
         # TODO crawl nwb using __builtin_enrichments and fill out __enrichments with existing ones
+
         tw = 2
 
     def enrich(self, enrichment: Enrichment):

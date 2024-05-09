@@ -6,3 +6,4 @@ from .plaintext import *
 from .yaml import *
 from .tif import *
 from .mp4 import *
+from .eyetracking import *

@@ -1,31 +1,34 @@
+import numpy as np
+import pendulum
+from pynwb.file import Subject
 
+from pipeline.enrichments.saccades import PutativeSaccadeEnrichment
+from simply_nwb import SimpleNWB
+from simply_nwb.pipeline import Enrichment
 # This file is used for testing things during development
 
 from simply_nwb.pipeline import NWBSession
 from simply_nwb.pipeline.enrichments.example import ExampleEnrichment
-
-
-class T(object):
-    def a(self):
-        print("hi")
-
-    def g(self):
-        return self.a
+from transforms import tif_read_image
 
 
 def main():
-    # first = T().g()
-    # second = T.a
-    from simply_nwb.pipeline.enrichments import Enrichment
-
     class CustEnrich(Enrichment):
         @staticmethod
         def get_name():
             return "custom"
 
-    v = NWBSession("a", custom_enrichments=[CustEnrich])
+    nwbfile = SimpleNWB.test_nwb()
 
-    v.enrich(ExampleEnrichment())
+    sess = NWBSession("a", custom_enrichments=[CustEnrich])
+    sess.enrich(ExampleEnrichment())
+    filepath = "C:\\Users\\denma\\Documents\\GitHub\\simply-nwb\\data\\adsfasdf\\20240410\\unitME\\session001\\20240410_unitME_session001_rightCam-0000DLC_resnet50_GazerMay24shuffle1_1030000.csv"
+
+    enrichment = PutativeSaccadeEnrichment.from_csv(nwbfile, filepath)
+    # TODO also test when already exists in NWB
+    # enrichment = PutativeSaccadeEnrichment()
+    sess.enrich(enrichment)
+
 
     tw = 2
 

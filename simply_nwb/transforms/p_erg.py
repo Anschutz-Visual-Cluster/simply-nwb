@@ -1,7 +1,108 @@
+import glob
+import os
+
 import pandas as pd
 from io import StringIO
 
+from hdmf.common import DynamicTable, VectorData
+from pynwb import NWBFile
+from pynwb.misc import AnnotationSeries
+
 from simply_nwb.util import warn_on_name_format
+
+
+class _PergMixin(object):
+
+    @staticmethod
+    def p_erg_add_folder(nwbfile: NWBFile, foldername: str, file_pattern: str, table_name: str, description: str,
+                         reformat_column_names: bool = True) -> NWBFile:
+        """
+        Add pERG data for each file into the NWB, from 'foldername' that matches 'file_pattern' into the NWB
+        Example 'file_pattern' "\*txt"
+
+        :param nwbfile: NWBFile object to add this data to
+        :param foldername: folder where  the pERG datas are
+        :param file_pattern: glob filepattern for selecting file e.g '\*.txt'
+        :param table_name: name of new table to insert the data into in the NWB
+        :param description: Description of the data to add
+        :param reformat_column_names: Reformat column names to a nicer format from raw
+        :return: None
+        """
+
+        if not os.path.exists(foldername):
+            raise ValueError(
+                f"Provided foldername '{foldername}' doesn't exist in current working directory: '{os.getcwd()}'!")
+        if not os.path.isdir(foldername):
+            raise ValueError(f"Provided foldername '{foldername}' isn't a folder!")
+
+        pattern = os.path.join(foldername, file_pattern)
+        files = glob.glob(pattern)
+        if not files:
+            raise ValueError(f"No files found matching pattern '{pattern}")
+        for filename in files:
+            _PergMixin.p_erg_add_data(
+                nwbfile,
+                filename=filename,
+                table_name=table_name,
+                reformat_column_names=reformat_column_names,
+                description=description
+            )
+        return nwbfile
+
+    @staticmethod
+    def p_erg_add_data(nwbfile: NWBFile, filename: str, table_name: str , description: str, reformat_column_names: bool = True) -> NWBFile:
+        """
+        Add pERG data into the NWB, from file, formatting it
+
+        :param nwbfile: NWBFile object to add this data to
+        :param filename: filename of the pERG data to read
+        :param table_name: name of new table to insert the data into in the NWB
+        :param description: Description of the data to add
+        :param reformat_column_names: Reformat column names to a nicer format from raw
+        :return: NWBFile
+        """
+        warn_on_name_format(table_name)
+
+        data_dict, metadata_dict = perg_parse_to_table(filename, reformat_column_names=reformat_column_names)
+        data_dict_name = f"{table_name}_data"
+
+        if data_dict_name in nwbfile.acquisition:
+            nwbfile.acquisition[data_dict_name].add_row(data_dict)
+        else:
+            nwbfile.add_acquisition(DynamicTable(
+                name=data_dict_name,
+                description=description,
+                columns=[
+                    VectorData(
+                        name=column,
+                        data=[data_dict[column]],
+                        description=column
+                    )
+                    for column in data_dict.keys()
+                ]
+            ))
+
+        meta_key_format = "meta_{key}"
+        format_key = lambda x: meta_key_format.format(key=x)
+
+        # For each key, create an annotation series
+        for meta_key, meta_value in metadata_dict.items():
+            if isinstance(meta_value, list) and len(meta_value) > 1:
+                raise ValueError(
+                    "Metadata collected from pERG cannot be automatically formatted into NWB, nested list detected! Please flatten or manually enter data")
+
+            nwb_key = format_key(meta_key)
+            if nwb_key not in nwbfile.acquisition:
+                nwbfile.add_acquisition(AnnotationSeries(
+                    name=nwb_key,
+                    description="pERG metadata for {}".format(meta_key),
+                    data=[meta_value[0]],
+                    timestamps=[0]
+                ))
+            else:
+                nwbfile.acquisition[nwb_key].add_annotation(float(len(nwbfile.acquisition[nwb_key].data)),
+                                                            meta_value[0])
+        return nwbfile
 
 
 def _format_column_name(column_name: str) -> str:

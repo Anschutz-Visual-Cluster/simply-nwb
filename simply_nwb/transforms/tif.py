@@ -1,7 +1,69 @@
 import os
+import warnings
+from typing import Any
+
 from PIL import Image
 import numpy as np
 import glob
+
+from hdmf.backends.hdf5 import H5DataIO
+from pynwb import NWBFile
+from pynwb.image import ImageSeries
+
+
+class _TIFMixin(object):
+    @staticmethod
+    def tif_add_as_processing_imageseries(
+            nwbfile: NWBFile,
+            name: str,
+            processing_module_name: str,
+            numpy_data: Any,
+            sampling_rate: float,
+            description: str,
+            starting_time: float = 0.0,
+            chunking: bool = True,
+            compression: bool = True
+    ) -> NWBFile:
+        """
+
+        Add a numpy array as a processing module with image data, meant to work in conjunction with the tif reader utility
+
+        :param nwbfile: NWBFile to add the tif data to
+        :param name: Name of the movie
+        :param numpy_data: data, can be np.memmap
+        :param processing_module_name: Name of the processing module to append or create to add the images to
+        :param sampling_rate: frames per second
+        :param description: description of the movie
+        :param starting_time: Starting time of this movie, relative to experiment start. Defaults to 0.0
+        :param chunking: Optional chunking for large files, defaults to True
+        :param compression: Optional compression for large files, defaults to True
+        :return: NWBFile
+        """
+        if len(numpy_data.shape) < 3:
+            raise ValueError("Invalid data shape! numpy_data must be at least 3 dimensional. If you only have 1 image, add an axis using myimgarr[None, :] to go from (a, b) to (1, a, b)")
+
+        images = ImageSeries(
+            name=name,
+            data=H5DataIO(
+                data=numpy_data,
+                compression=compression,
+                chunks=chunking
+            ),
+            description=description,
+            unit="n.a.",
+            rate=sampling_rate,
+            format="raw",
+            starting_time=starting_time
+        )
+
+        from simply_nwb import SimpleNWB
+        SimpleNWB.add_to_processing_module(
+            nwbfile,
+            module_name=processing_module_name,
+            module_description=description,
+            data=images
+        )
+        return nwbfile
 
 
 class ImageLoadError(Exception):

@@ -1,10 +1,69 @@
 import atexit
+from typing import Any
 
 import numpy as np
 import os
 import cv2
 import imageio.v3 as iio
 import uuid
+
+from hdmf.backends.hdf5 import H5DataIO
+from pynwb import NWBFile
+from pynwb.image import ImageSeries
+
+
+class _MP4Mixin(object):
+
+    @staticmethod
+    def mp4_add_as_acquisition(
+            nwbfile: NWBFile,
+            name: str,
+            numpy_data: Any,
+            frame_count: float,
+            sampling_rate: float,
+            description: str,
+            starting_time: float = 0.0,
+            chunking: bool = True,
+            compression: bool = True
+    ) -> NWBFile:
+        """
+        Add a numpy array as acquisition data, meant to work in conjunction with the mp4 reader utility
+
+        :param nwbfile: NWBFile to add the mp4 data to
+        :param name: Name of the movie
+        :param numpy_data: data, can be np.memmap
+        :param frame_count: number of total frames
+        :param sampling_rate: frames per second
+        :param description: description of the movie
+        :param starting_time: Starting time of this movie, relative to experiment start. Defaults to 0.0
+        :param chunking: Optional chunking for large files, defaults to True
+        :param compression: Optional compression for large files, defaults to True
+        :return: NWBFile
+        """
+        if name is None:
+            raise ValueError("Must supply name argument for the name of the ImageSeries!")
+        if numpy_data is None:
+            raise ValueError("Must supply numpy_data for insert into ImageSeries!")
+        args = (sampling_rate, description, starting_time, chunking, compression)
+        if None in args:
+            raise ValueError(f"Missing argument, got None in args {str(args)}")
+
+        mp4_timeseries = ImageSeries(
+            name=name,
+            data=H5DataIO(
+                data=numpy_data[:frame_count],
+                compression=compression,
+                chunks=chunking
+            ),
+            description=description,
+            unit="n.a.",
+            rate=sampling_rate,
+            format="raw",
+            starting_time=starting_time
+        )
+
+        nwbfile.add_acquisition(mp4_timeseries)
+        return nwbfile
 
 
 def _get_framecount(filename: str) -> int:
