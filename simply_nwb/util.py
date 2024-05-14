@@ -83,7 +83,7 @@ def compare_nwbfiles(nwbfile1: NWBFile, nwbfile2: NWBFile, name1: str, name2: st
                 raise ValueError(f"Error, '{name1}.units' and '{name2}.units' Are not the same length!")
 
 
-def nwb_write(nwb_obj: NWBFile, filename: str, verify: bool, nwb_kwarglist: Optional[dict] = None):
+def nwb_write(nwb_obj: NWBFile, filename: str, verify: bool):
     """
     Write an NWB object to a file on the local filesystem, and verify the contents were written correctly and the file
     isn't corrupted
@@ -91,31 +91,33 @@ def nwb_write(nwb_obj: NWBFile, filename: str, verify: bool, nwb_kwarglist: Opti
     :param nwb_obj: pynwb.file.NWBFile object
     :param filename: path of a local file, doesn't need to exist
     :param verify: Verify that *most* fields wrote correctly and the file didn't corrupt
-    :param nwb_kwarglist: Dict of kwargs to pass into the write func of the NWB
     :return: None
     """
-    if nwb_kwarglist is None:
-        nwb_kwarglist = {}
-
     io = NWBHDF5IO(filename, mode="w")
-    # io.write(nwb_obj)
+    try:
+        src = nwb_obj.container_source
+        if src == filename or src is None:  # Overwriting same NWB or writing a new one
+            io.write(nwb_obj)
+        else:
+            src_io = nwb_obj.read_io
+            nwb_obj.set_modified()
+            io.export(nwbfile=nwb_obj, src_io=src_io)
 
-    nwb_obj.set_modified()
+        if verify:
+            # Want to load file to check that it didn't corrupt
+            tio = NWBHDF5IO(filename)
+            try:
+                test_nwb = tio.read()
+                # Also note that your data can just 'be missing' because NWB decided not to write it 'for some reason'
+            except Exception as e:
+                warnings.warn(f"File is corrupted! NWB lets you write data that it won't read correctly, check your input data!")
+                raise e
+            finally:
+                tio.close()
 
-    io.export(nwbfile=nwb_obj, **nwb_kwarglist)
-    io.export_io()
-    io.close()
-
-    if verify:
-        from pynwb import NWBHDF5IO as nwbio  # Want to load file to check that it didn't corrupt
-        try:
-            test_nwb = nwbio(filename).read()
-            # Also note that your data can just 'be missing' because NWB decided not to write it 'for some reason'
-        except Exception as e:
-            warnings.warn(f"File is corrupted! NWB lets you write data that it won't read correctly, check your input data!")
-            raise e
-
-        compare_nwbfiles(nwb_obj, test_nwb, "InMemoryNWB", "WrittenFileNWB")
+            compare_nwbfiles(nwb_obj, test_nwb, "InMemoryNWB", "WrittenFileNWB")
+    finally:
+        io.close()
 
 
 def warn_on_name_format(name_value: str, context_str: str = "") -> bool:
