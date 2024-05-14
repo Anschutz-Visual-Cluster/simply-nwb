@@ -42,7 +42,7 @@ def main():
     print("Available enrichments: " + str(sess.available_enrichments()))
     print("Available keys for PutativeSaccades: " + str(sess.available_keys("PutativeSaccades")))
 
-    sess.save("test2.nwb")
+    # sess.save("test2.nwb")
     tw = 2
 
 
