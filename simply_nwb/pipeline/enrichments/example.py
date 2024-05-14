@@ -1,13 +1,11 @@
-from simply_nwb.pipeline import Enrichment
+from simply_nwb.pipeline import Enrichment, NWBValueMapping
 
 
 class ExampleEnrichment(Enrichment):
     def __init__(self):
-        super().__init__()
+        super().__init__(NWBValueMapping({}))
 
-        pass
-
-    def run(self, pynwb_obj):
+    def _run(self, pynwb_obj):
         pass
 
     @staticmethod

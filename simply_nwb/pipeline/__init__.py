@@ -74,7 +74,9 @@ saccade_values = sess.pull("LabelSaccades.saccades")  # Pull out the data
 """
 import logging
 from typing import Optional, Any
+from pynwb import NWBHDF5IO
 
+from simply_nwb import SimpleNWB
 from simply_nwb.pipeline.enrichments import Enrichment
 from spencer_funcs.autodiscovery import discover_wrapper
 
@@ -93,8 +95,8 @@ class NWBSession(object):
 
         logging.basicConfig(level=logging.INFO)
         self.logger = logging.getLogger("NWBSession")
-
-        self.nwb = 8  # TODO get actual nwb
+        nwb_fp = NWBHDF5IO(filename)
+        self.nwb = nwb_fp.read()
 
         self.__builtin_enrichments = globals()["__discover_enrichments"]()   # Access the hidden func DONT DO THIS :)
         if custom_enrichments is not None:
@@ -108,6 +110,14 @@ class NWBSession(object):
         # TODO crawl nwb using __builtin_enrichments and fill out __enrichments with existing ones
 
         tw = 2
+
+    def available_enrichments(self):
+        return list(self.__enrichments)
+
+    def available_keys(self, enrichment_name):
+        if enrichment_name not in self.__enrichments:
+            raise ValueError(f"Enrichment '{enrichment_name}' not found in NWB, found '{self.available_enrichments()}'")
+        return Enrichment.keys(enrichment_name, self.nwb)
 
     def enrich(self, enrichment: Enrichment):
         if not isinstance(enrichment, Enrichment):
@@ -128,12 +138,14 @@ class NWBSession(object):
         key = ".".join(namespaced_key.split(".")[1:])  # The rest, 'myvar'
 
         if namespace not in self.__enrichments:
-            raise ValueError(f"Enrichment '{namespace}' not found in this NWBSession!")
+            raise ValueError(f"Enrichment '{namespace}' not found in this NWBSession! Found enrichments '{str(list(self.__enrichments))}'")
 
-        mapping: NWBValueMapping = self.__builtin_enrichments[namespace].default_mapping()
-
-        val = mapping.get(key, self.nwb)
+        val = self.__builtin_enrichments[namespace].get_val(namespace, key, self.nwb)
         return val
+
+    def save(self, filename):
+        v = self.nwb
+        SimpleNWB.write(v, filename)
 
 
 @discover_wrapper

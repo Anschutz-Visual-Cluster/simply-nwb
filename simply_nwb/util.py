@@ -83,7 +83,7 @@ def compare_nwbfiles(nwbfile1: NWBFile, nwbfile2: NWBFile, name1: str, name2: st
                 raise ValueError(f"Error, '{name1}.units' and '{name2}.units' Are not the same length!")
 
 
-def nwb_write(nwb_obj: NWBFile, filename: str, verify: bool):
+def nwb_write(nwb_obj: NWBFile, filename: str, verify: bool, nwb_kwarglist: Optional[dict] = None):
     """
     Write an NWB object to a file on the local filesystem, and verify the contents were written correctly and the file
     isn't corrupted
@@ -91,11 +91,19 @@ def nwb_write(nwb_obj: NWBFile, filename: str, verify: bool):
     :param nwb_obj: pynwb.file.NWBFile object
     :param filename: path of a local file, doesn't need to exist
     :param verify: Verify that *most* fields wrote correctly and the file didn't corrupt
+    :param nwb_kwarglist: Dict of kwargs to pass into the write func of the NWB
     :return: None
     """
+    if nwb_kwarglist is None:
+        nwb_kwarglist = {}
 
     io = NWBHDF5IO(filename, mode="w")
-    io.write(nwb_obj)
+    # io.write(nwb_obj)
+
+    nwb_obj.set_modified()
+
+    io.export(nwbfile=nwb_obj, **nwb_kwarglist)
+    io.export_io()
     io.close()
 
     if verify:
