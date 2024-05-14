@@ -14,6 +14,10 @@ class NWBValueMapping(object):
 
         :param mapping: mapping dict
         """
+        def getkey(ky):
+            def kfunc(obj):
+                return obj[ky]
+            return kfunc
 
         def wrap_nested(func1, func2):
             # Wrap the output of func 1 into func 2 into a single function
@@ -30,11 +34,12 @@ class NWBValueMapping(object):
                 raise ValueError(f"Invalid NWBValueMapping, key '{k}' has a non-list type value '{v}'")
 
             func_mapping_path = lambda x: x
+
             for vv in v:
                 if isinstance(vv, types.FunctionType):
                     func_mapping_path = wrap_nested(func_mapping_path, vv)
                 elif isinstance(vv, str):
-                    func_mapping_path = wrap_nested(func_mapping_path, lambda x: x[vv])
+                    func_mapping_path = wrap_nested(func_mapping_path, getkey(vv))
                 else:
                     raise ValueError(f"Invalid mapping path '{v}' entry '{vv}' must be a function or string!")
 

@@ -73,20 +73,27 @@ saccade_values = sess.pull("LabelSaccades.saccades")  # Pull out the data
 
 """
 import logging
-from typing import Optional
+from typing import Optional, Any
 
 from simply_nwb.pipeline.enrichments import Enrichment
 from spencer_funcs.autodiscovery import discover_wrapper
 
+from simply_nwb.pipeline.value_mapping import NWBValueMapping
+
 
 class NWBSession(object):
     def __init__(self, filename, custom_enrichments: Optional[list[type]] = None):
+        """
+        Create a new NWB Session object from a given nwb filename. Will automatically detect enrichments in the NWB
+        and compare to available. Can pass a list of custom enrichments to load in if they're not in this library
+
+        :param filename: filepath to the nwb file
+        :param custom_enrichments: list of class types for classes inheriting the Enrichment class
+        """
+
         logging.basicConfig(level=logging.INFO)
         self.logger = logging.getLogger("NWBSession")
-        self.logger.info("Test")
 
-        # TODO Look up all enrichments here, use custom_enrichments for enrichments not defined in this package
-        pass
         self.nwb = 8  # TODO get actual nwb
 
         self.__builtin_enrichments = globals()["__discover_enrichments"]()   # Access the hidden func DONT DO THIS :)
@@ -106,8 +113,27 @@ class NWBSession(object):
         if not isinstance(enrichment, Enrichment):
             raise ValueError(f"Invalid enrichment type received! Got {type(enrichment)}")
 
+        # TODO requirement checking, for fields that are needed for adding specific enrichments
         enrichment.run(self.nwb)
         self.__enrichments.add(enrichment.get_name())
+
+    def pull(self, namespaced_key: str) -> Any:
+        """
+        Pull data from the NWB using namespaced valued from the enrichments
+
+        :param namespaced_key: Key for the value to retrieve, namespaced. ie ExampleEnrichment.myvar
+        """
+
+        namespace = namespaced_key.split(".")[0]  # namespace, eg 'ExampleEnrichment' from 'ExampleEnrichment.myvar'
+        key = ".".join(namespaced_key.split(".")[1:])  # The rest, 'myvar'
+
+        if namespace not in self.__enrichments:
+            raise ValueError(f"Enrichment '{namespace}' not found in this NWBSession!")
+
+        mapping: NWBValueMapping = self.__builtin_enrichments[namespace].default_mapping()
+
+        val = mapping.get(key, self.nwb)
+        return val
 
 
 @discover_wrapper

@@ -3,28 +3,46 @@ from typing import Any
 
 import numpy as np
 import pandas as pd
-from pynwb import NWBFile
+from pynwb import NWBFile, TimeSeries
 
 from simply_nwb import SimpleNWB
 from simply_nwb.pipeline import Enrichment
 from simply_nwb.pipeline.value_mapping import NWBValueMapping
+from simply_nwb.transforms import csv_load_dataframe_str
 
 
 class PutativeSaccadeEnrichment(Enrichment):
-    def __init__(self, stim_name="RightCamStim"):
+    def __init__(self, stim_name="RightCamStim", likelihood_threshold=0.99):
+        """
+        Create a new PutativeSaccadeEnrichment
+
+        :param stim_name: Name of the stimulus, defaults to RightCamStim
+        :param likelihood_threshold: threshold to use for the likelihood for eye positions
+        """
+
         super().__init__()
         self._mapping = self._make_mapping(stim_name)
         self.logger = logging.getLogger("PutativeSaccade")
 
+        self.likelihood_threshold = likelihood_threshold
+
     @staticmethod
-    def from_csv(nwbfile: NWBFile, filename: str, stim_name: str = "RightCamStim",
-                 units: list[str] = None, sampling_rate: float = 200.0, comments: str = None,
-                 description: str = None) -> 'PutativeSaccadeEnrichment':
+    def from_raw(
+            nwbfile: NWBFile,
+            dlc_filename: str,
+            timestamps_filename: str,
+            stim_name: str = "RightCamStim",
+            units: list[str] = None,
+            sampling_rate: float = 200.0,
+            comments: str = None,
+            description: str = None
+    ) -> 'PutativeSaccadeEnrichment':
         """
-        Create a PutativeSaccadeEnrichment from a CSV file rather than automagically from an NWB file with existing data
+        Create a PutativeSaccadeEnrichment from raw files rather than automagically from an NWB file with existing data
 
         :param nwbfile: NWBFile object to add the raw data to as this is enriched
-        :param filename: filepath to the .csv file formatted in DLC format
+        :param dlc_filename: filepath to the .csv file formatted in DLC format
+        :param timestamps_filename: filepath to the *_timestamps.txt file
         :param stim_name: Name of the stimulus to label as it's being inserted
         :param units: List of units of the columns of DLC if not set has a default
         :param sampling_rate: Sampling rate of the video recording that was run through DLC
@@ -34,22 +52,31 @@ class PutativeSaccadeEnrichment(Enrichment):
         :return: Enrichment object
         """
 
-        enr = PutativeSaccadeEnrichment()
+        enr = PutativeSaccadeEnrichment(stim_name=stim_name)
 
+        # Add DLC
         SimpleNWB.eyetracking_add_to_processing(
             nwbfile,
-            filename,
+            dlc_filename,
             module_name=stim_name,
             sampling_rate=sampling_rate,
             units=units,
             comments=comments,
             description=description
         )
+        # Add timestamps.txt
+        csv_fp = open(timestamps_filename, "r")
+        csv_data = csv_load_dataframe_str("Timestamps\n" + csv_fp.read())
+        csv_fp.close()
+
+        nwbfile.add_stimulus(TimeSeries(
+            name=f"Timestamps",
+            data=list(csv_data["Timestamps"]),
+            rate=1.0,
+            unit="s"
+        ))
 
         return enr
-
-    def run(self, pynwb_obj):
-        pass
 
     @staticmethod
     def get_name() -> str:
@@ -58,9 +85,10 @@ class PutativeSaccadeEnrichment(Enrichment):
     @staticmethod
     def _make_mapping(stim_name):
         return NWBValueMapping({
-            "x": [lambda x: x.processing, stim_name, "pupilCenter_x"],
-            "y": [lambda x: x.processing, stim_name, "pupilCenter_y"],
-            "likelihood": [lambda x: x.processing, stim_name, "pupilCenter_likelihood"]
+            "x": [lambda x: x.processing, stim_name, "pupilCenter_x", lambda y: y.data],
+            "y": [lambda x: x.processing, stim_name, "pupilCenter_y", lambda y: y.data],
+            "likelihood": [lambda x: x.processing, stim_name, "pupilCenter_likelihood", lambda y: y.data],
+            "timestamps": [lambda x: x.stimulus, "Timestamps", lambda y: y.data]
         })
 
     @staticmethod
@@ -77,6 +105,85 @@ class PutativeSaccadeEnrichment(Enrichment):
         """
         return self._mapping.get(val_key, nwb)
 
+    def run(self, pynwb_obj):
+        """
+        Enrich the nwb. Code adapted from https://github.com/jbhunt/myphdlib/blob/5c5fe627507046e888eabcd963c47906dfbea7b1/myphdlib/pipeline/saccades.py#L614
 
-# TODO Add content from here https://github.com/jbhunt/myphdlib/blob/5c5fe627507046e888eabcd963c47906dfbea7b1/myphdlib/pipeline/saccades.py#L614
+        :param pynwb_obj: NWB object to enrich
+        """
+        # TODO break into funcs
 
+        # Extract eye position
+        self.logger.info("Extracting eye position..")
+        x = self.get_val("x", pynwb_obj)
+        y = self.get_val("y", pynwb_obj)
+        likelihood = self.get_val("likelihood", pynwb_obj)
+        x[likelihood < self.likelihood_threshold] = np.nan  # Set eye pos values to nan if they dont meet the threshold
+        y[likelihood < self.likelihood_threshold] = np.nan
+
+        # Correct eye position
+        self.logger.info("Correcting eye position..")
+        corrected = np.full([x.shape[0] + int(1e6), 2], np.nan)
+        timestamps = self.get_val("timestamps", pynwb_obj)
+        factor = np.median(timestamps)
+
+        frame_offset = 0
+        frame_idx = 0
+        missing_frames = 0
+
+        for frame in timestamps:
+            frame_offset = frame_offset + (round(frame / factor) - 1)  # Increment frame
+            if frame_idx >= x.shape[0]:
+                missing_frames = missing_frames + 1
+            else:
+                corrected[frame_idx + frame_offset] = np.array([x[frame_idx], y[frame_idx]])
+            frame_idx = frame_idx + 1
+
+        corrected = corrected[:frame_idx + frame_offset, :]
+        # TODO Save me here?
+
+        # Interpolate eye position
+        interpolated = np.copy(corrected)
+        for col_idx in [0, 1]:  # Loop over the two columns (x,y) and interpolate both, one at at time
+            to_interpl = interpolated[:, col_idx]
+            dropped = np.isnan(to_interpl)
+            windows = []
+
+            row_idx = 0
+            while True:  # Find windows of dropped frames, append to list of idxs
+                if row_idx >= dropped.size:
+                    break
+                row_dropped = dropped[row_idx]
+
+                if row_dropped:
+                    num_dropped = 0
+                    for rdropped in dropped[row_idx:]:  # Go over until we find a frame that wasn't dropped
+                        if not rdropped:
+                            break
+                        num_dropped = num_dropped + 1
+
+                    if num_dropped <= 4:  # If we drop more than 4 frames in a row
+                        if row_idx + num_dropped + 1 >= to_interpl.size:
+                            row_idx = row_idx + num_dropped
+                            continue  # Skip over these dropped rows and don't interpolate them
+                        else:
+                            windows.append([row_idx - 1, row_idx + num_dropped + 1])
+                    row_idx = row_idx + num_dropped
+                else:  # Our row was not dropped
+                    row_idx = row_idx + 1
+
+        for start, stop in windows:
+            xframes = np.arange(start + 1, stop - 1, 1)
+            xvals = np.array([start, stop - 1])
+            yvals = np.array([to_interpl[start], to_interpl[stop - 1]])
+            interp_y = np.interp(xframes, xvals, yvals)
+            interpolated[start + 1: stop - 1, col_idx] = interp_y
+
+        # TODO Save interpolated here?
+        # TODO
+        # self._decomposeEyePosition()
+        # self._reorientEyePosition()
+        # self._filterEyePosition()
+        # self._detectPutativeSaccades()
+        tw = 2
+        pass

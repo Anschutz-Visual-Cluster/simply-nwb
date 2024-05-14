@@ -24,6 +24,8 @@ class _EyetrackingMixin(object):
             units = ["idx", "px", "px", "likelihood"]
         if description is None:
             description = "Processed eyetracking data for {}".format(module_name)
+        if comments is None:
+            comments = ""
 
         response_df = eyetracking_load_dlc(dlc_filepath)
 
