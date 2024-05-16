@@ -3,7 +3,7 @@ from typing import Any, Callable, Union
 
 
 class NWBValueMapping(object):
-    def __init__(self, mapping: dict[str, list[Union[str, Callable[[Any], Any]]]]):
+    def __init__(self, mapping: dict[str, Union['EnrichmentReference', list[Union[str, Callable[[Any], Any]]]]]):
         """
         Mapping is a dict of the form
         {"value_key": [ <mapping path> ] }
@@ -14,6 +14,7 @@ class NWBValueMapping(object):
 
         :param mapping: mapping dict
         """
+
         def getkey(ky):
             def kfunc(obj):
                 return obj[ky]
@@ -30,20 +31,26 @@ class NWBValueMapping(object):
         self._mapping = {}
 
         for k, v in mapping.items():
-            if not isinstance(v, list):
-                raise ValueError(f"Invalid NWBValueMapping, key '{k}' has a non-list type value '{v}'")
+            if isinstance(v, EnrichmentReference):
+                cls = v.get_classtype()
+                name = cls.get_name()
+                for ks in cls.saved_keys():
+                    self._mapping[f"{name}.{ks}"] = lambda mynwb: mynwb.processing[f"Enrichment.{name}"][ks].data[:]
+            else:
+                if not isinstance(v, list):
+                    raise ValueError(f"Invalid NWBValueMapping, key '{k}' has a non-list type value '{v}'")
 
-            func_mapping_path = lambda x: x
+                func_mapping_path = lambda x: x
 
-            for vv in v:
-                if isinstance(vv, types.FunctionType):
-                    func_mapping_path = wrap_nested(func_mapping_path, vv)
-                elif isinstance(vv, str):
-                    func_mapping_path = wrap_nested(func_mapping_path, getkey(vv))
-                else:
-                    raise ValueError(f"Invalid mapping path '{v}' entry '{vv}' must be a function or string!")
+                for vv in v:
+                    if isinstance(vv, types.FunctionType):
+                        func_mapping_path = wrap_nested(func_mapping_path, vv)
+                    elif isinstance(vv, str):
+                        func_mapping_path = wrap_nested(func_mapping_path, getkey(vv))
+                    else:
+                        raise ValueError(f"Invalid mapping path '{v}' entry '{vv}' must be a function or string!")
 
-            self._mapping[k] = func_mapping_path
+                self._mapping[k] = func_mapping_path
 
     def get(self, key, nwb) -> Any:
         if key not in self._mapping:
@@ -52,3 +59,21 @@ class NWBValueMapping(object):
 
     def keys(self) -> list[str]:
         return list(self._mapping.keys())
+
+
+class EnrichmentReference(object):
+    ENRICHS = None
+
+    def __init__(self, enrichment_name):
+        if EnrichmentReference.ENRICHS is None:
+            from simply_nwb.pipeline import discover_enrichments
+            EnrichmentReference.ENRICHS = discover_enrichments()
+
+        if enrichment_name not in EnrichmentReference.ENRICHS:
+            raise ValueError(f"Unknown Enrichment referenced '{enrichment_name}' Available: '{list(EnrichmentReference.ENRICHS.keys())}'")
+
+        self._cls = EnrichmentReference.ENRICHS[enrichment_name]
+
+    def get_classtype(self):
+        return self._cls
+

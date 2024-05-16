@@ -1,5 +1,9 @@
 from simply_nwb.pipeline import Enrichment, NWBValueMapping
 
+"""
+Use me as a starter point to make your own enrichment
+"""
+
 
 class ExampleEnrichment(Enrichment):
     def __init__(self):
@@ -11,3 +15,8 @@ class ExampleEnrichment(Enrichment):
     @staticmethod
     def get_name() -> str:
         return "Example"
+
+    @staticmethod
+    def saved_keys() -> list[str]:
+        return []
+

@@ -15,19 +15,30 @@ from simply_nwb.pipeline.value_mapping import NWBValueMapping
 from simply_nwb.transforms import csv_load_dataframe_str
 
 
-class PutativeSaccadeEnrichment(Enrichment):
+"""
+Code adapted from https://github.com/jbhunt/myphdlib/blob/5c5fe627507046e888eabcd963c47906dfbea7b1/myphdlib/pipeline/saccades.py#L614
+"""
+
+
+class PutativeSaccadesEnrichment(Enrichment):
     def __init__(self, stim_name="RightCamStim", timestamp_name="rightCamTimestamps", likelihood_threshold=0.99, fps=200):
         """
-        Create a new PutativeSaccadeEnrichment
+        Create a new PutativeSaccadesEnrichment
 
         :param stim_name: Name of the stimulus, defaults to RightCamStim
         :param likelihood_threshold: threshold to use for the likelihood for eye positions
         :param fps: frames per second of the video used, defaults to 200
         """
 
-        mapping = self._make_mapping(stim_name, timestamp_name)
-        super().__init__(mapping)
-        self.logger = logging.getLogger("PutativeSaccade")
+        # Give the superclass a mapping of required values for this enrichment to run
+        super().__init__(NWBValueMapping({
+            "x": [lambda x: x.processing, stim_name, "pupilCenter_x", lambda y: y.data[:]],
+            "y": [lambda x: x.processing, stim_name, "pupilCenter_y", lambda y: y.data[:]],
+            "likelihood": [lambda x: x.processing, stim_name, "pupilCenter_likelihood", lambda y: y.data[:]],
+            "timestamps": [lambda x: x.stimulus, timestamp_name, lambda y: y.data[:]]
+        }))
+
+        self.logger = logging.getLogger("PutativeSaccades")
 
         self._stim_name = stim_name
         self.likelihood_threshold = likelihood_threshold
@@ -44,7 +55,7 @@ class PutativeSaccadeEnrichment(Enrichment):
             sampling_rate: float = 200.0,
             comments: str = None,
             description: str = None
-    ) -> 'PutativeSaccadeEnrichment':
+    ) -> 'PutativeSaccadesEnrichment':
         """
         Create a PutativeSaccadeEnrichment from raw files rather than automagically from an NWB file with existing data
 
@@ -61,7 +72,7 @@ class PutativeSaccadeEnrichment(Enrichment):
         :return: Enrichment object
         """
 
-        enr = PutativeSaccadeEnrichment(stim_name=stim_name, fps=fps)
+        enr = PutativeSaccadesEnrichment(stim_name=stim_name, fps=fps)
 
         # Add DLC
         SimpleNWB.eyetracking_add_to_processing(
@@ -92,17 +103,21 @@ class PutativeSaccadeEnrichment(Enrichment):
         return "PutativeSaccades"
 
     @staticmethod
-    def _make_mapping(stim_name, timestamps_name):
-        return NWBValueMapping({
-            "x": [lambda x: x.processing, stim_name, "pupilCenter_x", lambda y: y.data[:]],
-            "y": [lambda x: x.processing, stim_name, "pupilCenter_y", lambda y: y.data[:]],
-            "likelihood": [lambda x: x.processing, stim_name, "pupilCenter_likelihood", lambda y: y.data[:]],
-            "timestamps": [lambda x: x.stimulus, timestamps_name, lambda y: y.data[:]]
-        })
+    def saved_keys() -> list[str]:
+        return [
+            "pose_corrected",
+            "pose_interpolated",
+            "pose_decomposed"
+            "pose_missing",
+            "pose_reoriented",
+            "pose_filtered",
+            "saccades_putative_indices",
+            "saccades_putative_waveforms",
+        ]
 
     def _run(self, pynwb_obj):
         """
-        Enrich the nwb. Code adapted from https://github.com/jbhunt/myphdlib/blob/5c5fe627507046e888eabcd963c47906dfbea7b1/myphdlib/pipeline/saccades.py#L614
+        Enrich the nwb
 
         :param pynwb_obj: NWB object to enrich
         """

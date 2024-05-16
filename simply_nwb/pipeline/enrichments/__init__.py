@@ -54,6 +54,15 @@ class Enrichment(object):
         return self._required_vals_map.get(val_key, nwb)
 
     @staticmethod
+    def saved_keys() -> list[str]:
+        """
+        Return a list of the names of keys that this enrichment will add, used for determining requirements
+
+        :returns: list of str keynames
+        """
+        raise NotImplemented
+
+    @staticmethod
     def get_name() -> str:
         """
         Unique CamelCase name for the enrichment

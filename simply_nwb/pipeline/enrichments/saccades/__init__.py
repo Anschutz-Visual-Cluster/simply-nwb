@@ -1,1 +1,2 @@
-from .putative import PutativeSaccadeEnrichment
+from .putative import PutativeSaccadesEnrichment
+from .predicted import PredictSaccadesEnrichment

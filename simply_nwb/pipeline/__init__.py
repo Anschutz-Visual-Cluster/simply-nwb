@@ -98,7 +98,7 @@ class NWBSession(object):
         nwb_fp = NWBHDF5IO(filename)
         self.nwb = nwb_fp.read()
 
-        self.__builtin_enrichments = globals()["__discover_enrichments"]()   # Access the hidden func DONT DO THIS :)
+        self.__builtin_enrichments = discover_enrichments()
         if custom_enrichments is not None:
             for cust in custom_enrichments:
                 if not isinstance(cust, type):
@@ -109,6 +109,9 @@ class NWBSession(object):
         self.__enrichments = set()  # list of str names of current enrichments in the nwb file
         # TODO crawl nwb using __builtin_enrichments and fill out __enrichments with existing ones
 
+        for k in list(self.nwb.processing.keys()):
+            if k.startswith("Enrichment."):
+                self.__enrichments.add(k[len("Enrichment."):])
         tw = 2
 
     def available_enrichments(self):
@@ -149,8 +152,8 @@ class NWBSession(object):
 
 
 @discover_wrapper
-def __discover_enrichments():  # Hide this func
-    def get_enrichment_name(cls):
+def discover_enrichments():
+    def get_enrichment_name(cls) -> dict[str, type]:
         if hasattr(cls, "get_name"):
             return cls.get_name()
         else:
@@ -161,6 +164,3 @@ def __discover_enrichments():  # Hide this func
         Enrichment,
         get_enrichment_name
     ]
-
-
-tw = 2
