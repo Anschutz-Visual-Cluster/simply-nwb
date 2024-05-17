@@ -1,3 +1,4 @@
+import logging
 from typing import Any
 from pynwb import NWBFile, TimeSeries
 
@@ -8,6 +9,7 @@ from simply_nwb.pipeline.value_mapping import NWBValueMapping
 class Enrichment(object):
     def __init__(self, required_vals_map: NWBValueMapping):
         self._required_vals_map = required_vals_map
+        self.logger = logging.getLogger(self.get_name())
 
     def run(self, pynwb_obj):
         # TODO Check required vals here

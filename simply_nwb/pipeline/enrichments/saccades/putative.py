@@ -38,8 +38,6 @@ class PutativeSaccadesEnrichment(Enrichment):
             "timestamps": [lambda x: x.stimulus, timestamp_name, lambda y: y.data[:]]
         }))
 
-        self.logger = logging.getLogger("PutativeSaccades")
-
         self._stim_name = stim_name
         self.likelihood_threshold = likelihood_threshold
         self.fps = fps

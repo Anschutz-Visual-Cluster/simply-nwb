@@ -1,6 +1,25 @@
 import numpy as np
 
 
+def resample_interp(myarr, num_feat):
+    """
+    Create a linear space of equally spaced parts total num_feat
+    interpolate these values, essentially resampling the given array
+    if num_feat > myarr.size, this is an 'up sampling'
+    elif num_feat <= myarr.size, this is a 'down sampling'
+
+    :param myarr:
+    :param num_feat:
+    :return: interpolated x values, matching len interpolated y values
+    """
+    interpd_xs = np.linspace(0, myarr.size - 1, num_feat)
+    actual_xs = np.linspace(0, myarr.size - 1, myarr.size)
+    actual_ys = myarr
+
+    interpd_ys = np.interp(interpd_xs, actual_xs, actual_ys)
+    return interpd_xs, interpd_ys
+
+
 def interpolate_flat_arr(arr):
     # Given an arr of shape (N,) find nan values and interpolate them
     nan_mask = np.isnan(arr)
