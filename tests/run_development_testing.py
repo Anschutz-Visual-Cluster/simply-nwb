@@ -2,6 +2,7 @@ import numpy as np
 import pendulum
 from pynwb.file import Subject
 
+
 from simply_nwb import SimpleNWB
 from simply_nwb.pipeline.enrichments.saccades import PutativeSaccadesEnrichment, PredictSaccadesEnrichment
 from simply_nwb.pipeline import Enrichment, NWBValueMapping
@@ -46,8 +47,46 @@ def putative():
 
 
 def predicting():
-    p = PredictSaccadesEnrichment()
     sess = NWBSession("putative.nwb")
+    waveforms = sess.pull("PutativeSaccades.saccades_putative_waveforms")
+
+    wav_x = waveforms[:, :, 0]
+    wav_y = waveforms[:, :, 1]
+    num_features = 30
+    idxs = []
+    for idx in range(wav_x.shape[0]):
+        x_non_nan = np.all(np.invert(np.isnan(wav_x[idx])))
+        y_non_nan = np.all(np.invert(np.isnan(wav_y[idx])))
+        if x_non_nan and y_non_nan:  # Both entries are non-nan
+            idxs.append(idx)
+
+    wav_x = wav_x[idxs]
+    wav_y = wav_y[idxs]
+
+    # Train the classifier yourself and pass it into the enrichment
+    # from sklearn.model_selection import GridSearchCV
+    # from sklearn.neural_network import MLPClassifier
+    from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
+    #
+    # grid = {
+    #     'hidden_layer_sizes': [(int(n),) for n in np.arange(2, num_features, 1)],
+    #     'max_iter': [
+    #         1000000,
+    #     ],
+    #     'activation': ['tanh', 'relu'],
+    #     'solver': ['sgd', 'adam'],
+    #     'alpha': [0.0001, 0.05],
+    #     'learning_rate': ['constant', 'adaptive'],
+    # }
+    # net = MLPClassifier()
+    # search = GridSearchCV(net, grid)
+    # search.fit(wav_x, wav_y)
+    # clf = search.best_estimator_
+
+    lda = LinearDiscriminantAnalysis()
+    lda.fit(wav_x.ravel().reshape(1,-1), wav_y.ravel())
+    p = PredictSaccadesEnrichment(lda)
+
     sess.enrich(p)
 
     tw = 2

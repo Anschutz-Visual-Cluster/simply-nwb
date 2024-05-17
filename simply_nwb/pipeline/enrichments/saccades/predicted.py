@@ -3,10 +3,11 @@ from simply_nwb.pipeline.value_mapping import EnrichmentReference
 
 
 class PredictSaccadesEnrichment(Enrichment):
-    def __init__(self):
+    def __init__(self, classifier):
         super().__init__(NWBValueMapping({
             "PutativeSaccades": EnrichmentReference("PutativeSaccades")
         }))
+        self._classifier = classifier
 
     @staticmethod
     def saved_keys() -> list[str]:
@@ -21,3 +22,8 @@ class PredictSaccadesEnrichment(Enrichment):
     @staticmethod
     def get_name() -> str:
         return "PredictSaccades"
+
+    def _predict_saccade_direction(self):
+
+        pass
+
