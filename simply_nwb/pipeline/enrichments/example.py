@@ -14,7 +14,10 @@ class ExampleEnrichment(Enrichment):
         }))
 
     def _run(self, pynwb_obj):
-        pass
+        # get var from req
+        # self._get_req_val("PutativeSaccades.saccades_putative_waveforms", pynwb_obj)
+        # self._get_req_val("myvariable_i_need", pynwb_obj)
+        self._save_val("mykeyname", [1, 2, 3], pynwb_obj)
 
     @staticmethod
     def get_name() -> str:
@@ -22,5 +25,5 @@ class ExampleEnrichment(Enrichment):
 
     @staticmethod
     def saved_keys() -> list[str]:
-        return []
+        return ["mykeyname"]
 

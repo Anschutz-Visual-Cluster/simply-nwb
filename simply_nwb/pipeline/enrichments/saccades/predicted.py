@@ -6,11 +6,28 @@ from simply_nwb.pipeline.value_mapping import EnrichmentReference
 
 
 class PredictSaccadesEnrichment(Enrichment):
-    def __init__(self, classifier):
+    def __init__(self, direction_classifier, temporal_epoch_regressor, temporal_epoch_transformer, nasal_epoch_regressor, nasal_epoch_transformer):
+        """
+        Create a new enrichment for predicting saccades, requires the putative saccades enrichment to run
+
+        :param direction_classifier: Classifier to predict saccade direction, expects input data to be (N, features) where N is num samples, and features is _resample_waveform_to_velocity (default 30)
+        :param temporal_epoch_regressor: Regressor for 'increasing' temporal waveforms
+        :param temporal_epoch_transformer: Transformer for 'increasing' temporal waveforms
+        :param nasal_epoch_regressor: Regressor for 'decreasing' temporal waveforms
+        :param nasal_epoch_transformer: Transformer for 'decreasing' temporal waveforms
+        """
         super().__init__(NWBValueMapping({
             "PutativeSaccades": EnrichmentReference("PutativeSaccades")
         }))
-        self._classifier = classifier
+        self._direction_cls = direction_classifier
+        self._temporal_epoch_regressor = temporal_epoch_regressor
+        self._temporal_epoch_transformer = temporal_epoch_transformer
+        self._nasal_epoch_regressor = nasal_epoch_regressor
+        self._nasal_epoch_transformer = nasal_epoch_transformer
+
+    @staticmethod
+    def get_name() -> str:
+        return "PredictSaccades"
 
     @staticmethod
     def saved_keys() -> list[str]:
@@ -62,13 +79,7 @@ class PredictSaccadesEnrichment(Enrichment):
 
     def _run(self, pynwb_obj):
         self._predict_saccade_direction(pynwb_obj)
-
-        tw = 2
-        pass
-
-    @staticmethod
-    def get_name() -> str:
-        return "PredictSaccades"
+        self._predict_saccade_epochs(pynwb_obj)
 
     def _predict_saccade_direction(self, pynwb_obj):
         self.logger.info("Predicting saccade waveform labels (direction)..")
@@ -89,13 +100,20 @@ class PredictSaccadesEnrichment(Enrichment):
         resamps = np.array(resamps)
 
         # Predict -1, 0, or 1
-        preds = self._classifier.predict(resamps)
+        preds = self._direction_cls.predict(resamps)
 
         self._save_val("saccades_predicted_indices", indices, pynwb_obj)
         self._save_val("saccades_predicted_waveforms", waveforms, pynwb_obj)
         self._save_val("saccades_predicted_labels", preds, pynwb_obj)
 
     def _predict_saccade_epochs(self, pynwb_obj):
-        
+        self.logger.info("Predicting saccade epochs..")
+
+        # X = x value, velocity and resampled
+        # y = (start offset time, end offset time)  <saccadestart>----y[0]--<saccadepeak/center>---y[1]--<saccadeend>
+        # z = (direction of saccade, -1 or 1)
+        # use the nasal and temporal regressor and transformers to take the current data and save predicted values
+        # will need to resample X, possibly divide by fps on y (z is direction)
+
         pass
 

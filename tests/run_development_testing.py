@@ -48,8 +48,7 @@ def putative():
     sess.save("putative.nwb")
 
 
-def _get_pretrained_model(sess):
-
+def _get_pretrained_direction_model(sess):
     wv = sess.pull("PutativeSaccades.saccades_putative_waveforms")
 
     x_velocities, idxs = PredictSaccadesEnrichment._preformat_waveforms(wv)
@@ -63,13 +62,60 @@ def _get_pretrained_model(sess):
     return lda
 
 
+def _get_pretrained_epoch_models(sess):
+    from sklearn.multioutput import MultiOutputRegressor
+    from sklearn.neural_network import MLPRegressor
+    from sklearn.preprocessing import StandardScaler
+    from sklearn.model_selection import GridSearchCV
+
+    num_features = 30
+    # x vals of the waveforms for training on, handpicked and corresponding to the epoch_labels below
+    training_x_waveforms = [[]]  # TODO
+    epoch_labels = [[-0.1, 0.1]]  # List of pairs of offsets from peak for each waveform to train on TODO divide by fps?
+
+    # Transformer
+    transformer = StandardScaler().fit(epoch_labels)
+    standardized_epoch_labels = transformer.transform(epoch_labels)
+
+    # Regressor
+    hidden_layer_sizes = [(int(n),) for n in np.arange(2, num_features, 1)]
+
+    grid = {
+        'estimator__hidden_layer_sizes': hidden_layer_sizes,
+        'estimator__max_iter': [
+            1000000,
+        ],
+        'estimator__activation': ['tanh', 'relu'],
+        'estimator__solver': ['sgd', 'adam'],
+        'estimator__alpha': [0.0001, 0.05],
+        'estimator__learning_rate': ['constant', 'adaptive'],
+    }
+
+    reg = MultiOutputRegressor(MLPRegressor(verbose=True))
+    search = GridSearchCV(reg, grid)
+
+    search.fit(training_x_waveforms, standardized_epoch_labels)
+    regressor = search.best_estimator_
+
+    return regressor, transformer
+
+
 def predicting():
     sess = NWBSession("putative.nwb")
 
-    lda = _get_pretrained_model(sess)
-    p = PredictSaccadesEnrichment(lda)
-    sess.enrich(p)
+    direct = _get_pretrained_direction_model(sess)
+    temp_reg, temp_tran = _get_pretrained_epoch_models(sess)
+    nasal_reg, nasal_tran = _get_pretrained_epoch_models(sess)
 
+    p = PredictSaccadesEnrichment(
+        direction_classifier=direct,
+        temporal_epoch_regressor=temp_reg,
+        temporal_epoch_transformer=temp_tran,
+        nasal_epoch_regressor=nasal_reg,
+        nasal_epoch_transformer=nasal_tran
+    )
+    
+    sess.enrich(p)
     tw = 2
 
 
