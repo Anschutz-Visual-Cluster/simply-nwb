@@ -1,6 +1,6 @@
 import numpy as np
 
-from pipeline.util import resample_interp
+from simply_nwb.pipeline.util import resample_interp
 from simply_nwb.pipeline import Enrichment, NWBValueMapping
 from simply_nwb.pipeline.value_mapping import EnrichmentReference
 
