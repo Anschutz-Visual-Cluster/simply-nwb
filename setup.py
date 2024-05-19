@@ -1,6 +1,6 @@
 from setuptools import setup, find_packages
 
-VERSION = "0.6.2"  # Remove this comment when enrichments are published
+VERSION = "0.6.2"  # Remove this comment when enrichments are published (update spencer-funcs)
 
 
 def parse_requirements(requirement_file):
