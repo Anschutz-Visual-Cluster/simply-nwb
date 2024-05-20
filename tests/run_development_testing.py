@@ -16,17 +16,6 @@ from simply_nwb.transforms import tif_read_image
 
 
 def putative():
-    class CustEnrich(Enrichment):
-        def __init__(self):
-            super().__init__(NWBValueMapping({}))
-
-        @staticmethod
-        def get_name():
-            return "MyCustom"
-
-        def _run(self, pynwb_obj):
-            pass
-
     prefix = "C:\\Users\\denma\\Documents\\GitHub\\simply-nwb\\data\\adsfasdf\\20240410\\unitME\\session001\\"
     # prefix = "C:\\Users\\Matrix\\Downloads\\adsfasdf\\20240410\\unitME\\session001"
     # prefix = "C:\\Users\\spenc\\Documents\\GitHub\\simply-nwb\\data\\adsfasdf\\20240410\\unitME\\session001"
@@ -34,7 +23,7 @@ def putative():
     dlc_filepath = f"{prefix}\\20240410_unitME_session001_rightCam-0000DLC_resnet50_GazerMay24shuffle1_1030000.csv"
     timestamp_filepath = f"{prefix}\\20240410_unitME_session001_rightCam_timestamps.txt"
 
-    sess = NWBSession("../data/test.nwb", custom_enrichments=[CustEnrich])
+    sess = NWBSession("../data/test.nwb")
     sess.enrich(ExampleEnrichment())
 
     # enrichment = PutativeSaccadesEnrichment.from_raw(nwbfile, dlc_filepath, timestamp_filepath)
@@ -70,25 +59,28 @@ def _get_pretrained_epoch_models(sess):
 
     num_features = 30
     # x vals of the waveforms for training on, handpicked and corresponding to the epoch_labels below
-    training_x_waveforms = [[]]  # TODO
-    epoch_labels = [[-0.1, 0.1]]  # List of pairs of offsets from peak for each waveform to train on TODO divide by fps?
+    wv = sess.pull("PutativeSaccades.saccades_putative_waveforms")
+
+    training_x_waveforms, idxs = PredictSaccadesEnrichment._preformat_waveforms(wv)
+    samps = np.random.normal(size=len(idxs)*3)
+    epoch_labels = [[np.abs(samps[s*2-1])*-1, np.abs(samps[s*2])] for s in range(len(samps[2:len(idxs)*2+1:2]))]  # List of pairs of offsets from peak for each waveform to train on TODO divide by fps?
 
     # Transformer
     transformer = StandardScaler().fit(epoch_labels)
     standardized_epoch_labels = transformer.transform(epoch_labels)
 
     # Regressor
-    hidden_layer_sizes = [(int(n),) for n in np.arange(2, num_features, 1)]
-
+    # hidden_layer_sizes = [(int(n),) for n in np.arange(2, num_features, 1)]
+    hidden_layer_sizes = [(4,)]
     grid = {
         'estimator__hidden_layer_sizes': hidden_layer_sizes,
         'estimator__max_iter': [
-            1000000,
+            1000,
         ],
-        'estimator__activation': ['tanh', 'relu'],
-        'estimator__solver': ['sgd', 'adam'],
-        'estimator__alpha': [0.0001, 0.05],
-        'estimator__learning_rate': ['constant', 'adaptive'],
+        'estimator__activation': ['tanh'],  # , 'relu'],
+        'estimator__solver': ['sgd'],  # , 'adam'],
+        'estimator__alpha': [0.0001],  # , 0.05],
+        'estimator__learning_rate': ['constant']  # , 'adaptive'],
     }
 
     reg = MultiOutputRegressor(MLPRegressor(verbose=True))

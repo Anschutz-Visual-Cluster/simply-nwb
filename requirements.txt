@@ -14,4 +14,4 @@ scipy
 scikit-learn
 dict-plus
 #open-ephys-python-tools https://github.com/open-ephys/open-ephys-python-tools
-spencer-funcs
+spencer-funcs>=0.0.3

@@ -34,7 +34,11 @@ class PredictSaccadesEnrichment(Enrichment):
         return [
             "saccades_predicted_indices",
             "saccades_predicted_waveforms",
-            "saccades_predicted_labels"
+            "saccades_predicted_labels",
+            "saccades_predicted_nasal_epochs",
+            "saccades_predicted_temporal_epochs",
+            "saccades_predicted_nasal_waveforms",
+            "saccades_predicted_temporal_waveforms"
         ]
 
     @staticmethod
@@ -78,8 +82,8 @@ class PredictSaccadesEnrichment(Enrichment):
         return resampd
 
     def _run(self, pynwb_obj):
-        self._predict_saccade_direction(pynwb_obj)
-        self._predict_saccade_epochs(pynwb_obj)
+        pred_labels, pred_waveforms = self._predict_saccade_direction(pynwb_obj)
+        self._predict_saccade_epochs(pynwb_obj, pred_labels, pred_waveforms)
 
     def _predict_saccade_direction(self, pynwb_obj):
         self.logger.info("Predicting saccade waveform labels (direction)..")
@@ -93,20 +97,15 @@ class PredictSaccadesEnrichment(Enrichment):
         waveforms = waveforms[idxs]
         indices = indices[idxs]
 
-        # Resample the x values before running through prediction model
-        resamps = []
-        for idx in range(len(waveforms)):
-            resamps.append(self._resample_waveform_to_velocity(waveforms[idx, :, 0]))  # Resample the x's
-        resamps = np.array(resamps)
-
         # Predict -1, 0, or 1
-        preds = self._direction_cls.predict(resamps)
+        pred_labels = self._direction_cls.predict(x_velocities)
 
         self._save_val("saccades_predicted_indices", indices, pynwb_obj)
         self._save_val("saccades_predicted_waveforms", waveforms, pynwb_obj)
-        self._save_val("saccades_predicted_labels", preds, pynwb_obj)
+        self._save_val("saccades_predicted_labels", pred_labels, pynwb_obj)
+        return pred_labels, waveforms
 
-    def _predict_saccade_epochs(self, pynwb_obj):
+    def _predict_saccade_epochs(self, pynwb_obj, pred_labels, pred_waveforms):
         self.logger.info("Predicting saccade epochs..")
 
         # X = x value, velocity and resampled
@@ -115,5 +114,15 @@ class PredictSaccadesEnrichment(Enrichment):
         # use the nasal and temporal regressor and transformers to take the current data and save predicted values
         # will need to resample X, possibly divide by fps on y (z is direction)
 
-        pass
+        for regressor, transformer, saccade_direction, name in [
+                (self._temporal_epoch_regressor, self._temporal_epoch_transformer, -1, "temporal"),
+                (self._nasal_epoch_regressor, self._nasal_epoch_transformer, 1, "nasal")]:
+
+            idxs = np.where(pred_labels == saccade_direction)[0]
+            resamp, idxs = self._preformat_waveforms(pred_waveforms[idxs])
+
+            reg_pred = regressor.predict(resamp)
+            pred = transformer.inverse_transform(reg_pred)
+            self._save_val(f"saccades_predicted_{name}_waveforms", pred_waveforms[idxs], pynwb_obj)
+            self._save_val(f"saccades_predicted_{name}_epochs", pred, pynwb_obj)
 
