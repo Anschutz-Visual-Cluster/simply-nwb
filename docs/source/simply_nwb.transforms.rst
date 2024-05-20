@@ -20,6 +20,14 @@ simply\_nwb.transforms.csv module
    :undoc-members:
    :show-inheritance:
 
+simply\_nwb.transforms.eyetracking module
+-----------------------------------------
+
+.. automodule:: simply_nwb.transforms.eyetracking
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 simply\_nwb.transforms.labjack module
 -------------------------------------
 

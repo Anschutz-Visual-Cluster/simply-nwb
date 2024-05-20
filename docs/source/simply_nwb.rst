@@ -7,6 +7,7 @@ Subpackages
 .. toctree::
    :maxdepth: 4
 
+   simply_nwb.pipeline
    simply_nwb.transferring
    simply_nwb.transforms
 
