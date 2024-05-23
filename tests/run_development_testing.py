@@ -169,7 +169,7 @@ def _get_epoch_training_data(direction):
 
 def _find_joshdata(root_directory):
     # Find sessions and return data in a list
-    # like [["path/dlc.csv", "path/timestamps.txt", "path/output.hdf"], ..]
+    # like [["session_name", "path/dlc.csv", "path/timestamps.txt", "path/output.hdf"], ..]
     found_sessions = []
     for folder in os.listdir(root_directory):
         subfolder = os.path.join(root_directory, folder)
@@ -177,7 +177,9 @@ def _find_joshdata(root_directory):
             dlc = glob.glob(os.path.join(subfolder, "*rightCam*csv"), recursive=True)[0]
             timestamps = glob.glob(os.path.join(subfolder, "*timestamps*txt"), recursive=True)[0]
             output = glob.glob(os.path.join(subfolder, "*output*hdf"), recursive=True)[0]
-            found_sessions.append([dlc, timestamps, output])
+            name = os.path.basename(subfolder)
+
+            found_sessions.append([name, dlc, timestamps, output])
 
     return found_sessions
 
@@ -189,9 +191,9 @@ def validation():
     dx, dy = _get_direction_training_data()
 
     # list of folderpaths with a dlc.csv, timestamps.txt and output.hdf
-    sessions_to_validate = _find_joshdata("E:\\AnnaTraining\\joshdata")  # list like [["path/dlc.csv", "path/timestamps.txt", "path/output.hdf"], ..]
+    sessions_to_validate = _find_joshdata("E:\\AnnaTraining\\joshdata")
 
-    for dlc_csv, timestamps, output_hdf in sessions_to_validate:
+    for name, dlc_csv, timestamps, output_hdf in sessions_to_validate:
         temp_nwbfile_name = "test_nwb.nwb"
 
         SimpleNWB.write(SimpleNWB.test_nwb(), temp_nwbfile_name)
@@ -215,6 +217,7 @@ def validation():
         )
 
         sess.enrich(predictive_enrichment)
+        sess.save(f"{name}_enriched.nwb")
 
         tw = 2
 
