@@ -1,5 +1,8 @@
+import glob
+import os
 import random
 
+import h5py
 import numpy as np
 import pendulum
 from pynwb.file import Subject
@@ -37,12 +40,15 @@ def putative():
     sess.save("putative.nwb")
 
 
-def _get_pretrained_direction_model(sess):
-    wv = sess.pull("PutativeSaccades.saccades_putative_waveforms")
+def _get_pretrained_direction_model(sess, wv=None, y_vals=None):
+    if wv is None:
+        wv = sess.pull("PutativeSaccades.saccades_putative_waveforms")
 
     x_velocities, idxs = PredictSaccadesEnrichment._preformat_waveforms(wv)
+
     x_velocities = np.array(x_velocities)
-    y_vals = [random.randint(0, 2) - 1 for _ in range(len(x_velocities))]  # Randomly generate -1, 0, 1 vals
+    if y_vals is None:
+        y_vals = [random.randint(0, 2) - 1 for _ in range(len(x_velocities))]  # Randomly generate -1, 0, 1 vals
 
     from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
     lda = LinearDiscriminantAnalysis()
@@ -51,7 +57,7 @@ def _get_pretrained_direction_model(sess):
     return lda
 
 
-def _get_pretrained_epoch_models(sess):
+def _get_pretrained_epoch_models(sess, wv=None, epoch_labels=None):
     from sklearn.multioutput import MultiOutputRegressor
     from sklearn.neural_network import MLPRegressor
     from sklearn.preprocessing import StandardScaler
@@ -59,11 +65,13 @@ def _get_pretrained_epoch_models(sess):
 
     num_features = 30
     # x vals of the waveforms for training on, handpicked and corresponding to the epoch_labels below
-    wv = sess.pull("PutativeSaccades.saccades_putative_waveforms")
+    if wv is None:
+        wv = sess.pull("PutativeSaccades.saccades_putative_waveforms")
 
     training_x_waveforms, idxs = PredictSaccadesEnrichment._preformat_waveforms(wv)
     samps = np.random.normal(size=len(idxs)*3)
-    epoch_labels = [[np.abs(samps[s*2-1])*-1, np.abs(samps[s*2])] for s in range(len(samps[2:len(idxs)*2+1:2]))]  # List of pairs of offsets from peak for each waveform to train on TODO divide by fps?
+    if epoch_labels is None:
+        epoch_labels = [[np.abs(samps[s*2-1])*-1, np.abs(samps[s*2])] for s in range(len(samps[2:len(idxs)*2+1:2]))]  # List of pairs of offsets from peak for each waveform to train on TODO divide by fps?
 
     # Transformer
     transformer = StandardScaler().fit(epoch_labels)
@@ -111,9 +119,115 @@ def predicting():
     tw = 2
 
 
+def _get_direction_training_data():
+    source_folder = "E:\\AnnaTrainingData"  # Scan for '*output.hdf'
+    # want prediction/saccades/direction/<X/y>
+
+    train_x = []
+    train_y = []
+    for file in os.listdir(source_folder):
+        if file.endswith("output.hdf"):
+            data = h5py.File(os.path.join(source_folder, file))
+            train_x.append(np.array(data["prediction"]["saccades"]["direction"]["X"]))  # x (needs to be downsampled)
+            train_y.append(np.array(data["prediction"]["saccades"]["direction"]["y"]).reshape(-1))  # y
+
+    train_x = np.vstack(train_x)
+    train_y = np.hstack(train_y)
+    return train_x, train_y
+
+
+def _get_epoch_training_data(direction):
+    source_folder = "E:\\AnnaTrainingData"  # Scan for '*output.hdf'
+    # want prediction/saccades/epochs/<X/y/z>
+
+    train_x = []
+    train_y = []
+    train_z = []
+
+    # X = x value, velocity and resampled
+    # y = (start offset time, end offset time)  <saccadestart>----y[0]--<saccadepeak/center>---y[1]--<saccadeend>
+    # z = (direction of saccade, -1 or 1)
+
+    for file in os.listdir(source_folder):
+        if file.endswith("output.hdf"):
+            data = h5py.File(os.path.join(source_folder, file))
+            train_x.append(np.array(data["prediction"]["saccades"]["epochs"]["X"]))  # x (needs to be downsampled)
+            train_y.append(np.array(data["prediction"]["saccades"]["epochs"]["y"]))  # y
+            train_z.append(np.array(data["prediction"]["saccades"]["epochs"]["z"]).reshape(-1))  # z
+
+    train_x = np.vstack(train_x)
+    train_y = np.vstack(train_y)
+    train_z = np.hstack(train_z)
+
+    direction_idxs = np.where(train_z == direction)[0]
+    train_x = train_x[direction_idxs]
+    train_y = train_y[direction_idxs]
+    train_z = train_z[direction_idxs]
+
+    return train_x, train_y, train_z
+
+
+def _find_joshdata(root_directory):
+    # Find sessions and return data in a list
+    # like [["path/dlc.csv", "path/timestamps.txt", "path/output.hdf"], ..]
+    found_sessions = []
+    for folder in os.listdir(root_directory):
+        subfolder = os.path.join(root_directory, folder)
+        if os.path.isdir(subfolder):
+            dlc = glob.glob(os.path.join(subfolder, "*rightCam*csv"), recursive=True)[0]
+            timestamps = glob.glob(os.path.join(subfolder, "*timestamps*txt"), recursive=True)[0]
+            output = glob.glob(os.path.join(subfolder, "*output*hdf"), recursive=True)[0]
+            found_sessions.append([dlc, timestamps, output])
+
+    return found_sessions
+
+
+def validation():
+    # 1 is nasal, -1 is temporal
+    nasal_x, nasal_y, nasal_z = _get_epoch_training_data(1)
+    temporal_x, temporal_y, temporal_z = _get_epoch_training_data(-1)
+    dx, dy = _get_direction_training_data()
+
+    # list of folderpaths with a dlc.csv, timestamps.txt and output.hdf
+    sessions_to_validate = _find_joshdata("E:\\AnnaTraining\\joshdata")  # list like [["path/dlc.csv", "path/timestamps.txt", "path/output.hdf"], ..]
+
+    for dlc_csv, timestamps, output_hdf in sessions_to_validate:
+        temp_nwbfile_name = "test_nwb.nwb"
+
+        SimpleNWB.write(SimpleNWB.test_nwb(), temp_nwbfile_name)
+        sess = NWBSession(temp_nwbfile_name)
+
+        # Putative
+        putative_enrichment = PutativeSaccadesEnrichment.from_raw(sess.nwb, dlc_csv, timestamps)
+        sess.enrich(putative_enrichment)
+
+        # Predictive
+        nasal_reg, nasal_tran = _get_pretrained_epoch_models(sess, wv=nasal_x, epoch_labels=nasal_z)
+        temp_reg, temp_tran = _get_pretrained_epoch_models(sess, wv=temporal_x, epoch_labels=temporal_z)
+        direct = _get_pretrained_direction_model(sess, wv=dx, y_vals=dy)
+
+        predictive_enrichment = PredictSaccadesEnrichment(
+            direction_classifier=direct,
+            temporal_epoch_regressor=temp_reg,
+            temporal_epoch_transformer=temp_tran,
+            nasal_epoch_regressor=nasal_reg,
+            nasal_epoch_transformer=nasal_tran
+        )
+
+        sess.enrich(predictive_enrichment)
+
+        tw = 2
+
+
+    tw = 2
+
+    pass
+
+
 def main():
     # putative()
-    predicting()
+    # predicting()
+    validation()
     tw = 2
 
 

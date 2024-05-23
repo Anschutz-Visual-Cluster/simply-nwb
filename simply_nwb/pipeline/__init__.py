@@ -22,7 +22,7 @@ class NWBSession(object):
         logging.basicConfig(level=logging.INFO)
         self.logger = logging.getLogger("NWBSession")
         self.nwb_fp = NWBHDF5IO(filename)
-        self.nwb = self.nwb_fp.read()  # TODO atexit close me
+        self.nwb = self.nwb_fp.read()  # TODO atexit close me?
 
         self.__builtin_enrichments = discover_enrichments()
         if custom_enrichments is not None:
