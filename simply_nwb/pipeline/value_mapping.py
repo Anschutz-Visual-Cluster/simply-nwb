@@ -17,7 +17,11 @@ class NWBValueMapping(object):
 
         def getkey(ky):
             def kfunc(obj):
-                return obj[ky]
+                try:
+                    result = obj[ky]
+                    return result
+                except KeyError as e:
+                    raise KeyError(f"Unable to access required subkey '{ky}' in object '{str(obj)}' Error '{str(e)}'")
             return kfunc
 
         def wrap_nested(func1, func2):

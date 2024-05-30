@@ -43,6 +43,14 @@ class NWBSession(object):
     def available_enrichments(self):
         return list(self.__enrichments)
 
+    def to_dict(self):
+        d = {}
+        for enrich in self.available_enrichments():
+            d[enrich] = {}
+            for ky in self.available_keys(enrich):
+                d[enrich][ky] = self.pull(f"{enrich}.{ky}")
+        return d
+
     def available_keys(self, enrichment_name):
         if enrichment_name not in self.__enrichments:
             raise ValueError(f"Enrichment '{enrichment_name}' not found in NWB, found '{self.available_enrichments()}'")

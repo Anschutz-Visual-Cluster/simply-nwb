@@ -49,6 +49,7 @@ class PutativeSaccadesEnrichment(Enrichment):
             timestamps_filename: str,
             fps: int = 200,
             stim_name: str = "RightCamStim",
+            timestamp_name: str = "rightCamTimestamps",
             units: list[str] = None,
             sampling_rate: float = 200.0,
             comments: str = None,
@@ -62,6 +63,7 @@ class PutativeSaccadesEnrichment(Enrichment):
         :param timestamps_filename: filepath to the \*_timestamps.txt file
         :param fps: frames per second of the video recording, defaults to 200
         :param stim_name: Name of the stimulus to label as it's being inserted
+        :param timestamp_name: Name of the container in the stimulus section where the timestamps are located
         :param units: List of units of the columns of DLC if not set has a default
         :param sampling_rate: Sampling rate of the video recording that was run through DLC
         :param comments: Comments
@@ -88,7 +90,7 @@ class PutativeSaccadesEnrichment(Enrichment):
         csv_fp.close()
 
         nwbfile.add_stimulus(TimeSeries(
-            name=f"Timestamps",
+            name=timestamp_name,
             data=list(csv_data["Timestamps"]),
             rate=1.0,
             unit="s"

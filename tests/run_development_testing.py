@@ -44,7 +44,8 @@ def _get_pretrained_direction_model(sess, wv=None, y_vals=None):
     if wv is None:
         wv = sess.pull("PutativeSaccades.saccades_putative_waveforms")
 
-    x_velocities, idxs = PredictSaccadesEnrichment._preformat_waveforms(wv)
+    tmp_wv = np.broadcast_to(wv[:, :, None], shape=(*wv.shape, 2))
+    x_velocities, idxs = PredictSaccadesEnrichment._preformat_waveforms(tmp_wv)
 
     x_velocities = np.array(x_velocities)
     if y_vals is None:
@@ -68,9 +69,10 @@ def _get_pretrained_epoch_models(sess, wv=None, epoch_labels=None):
     if wv is None:
         wv = sess.pull("PutativeSaccades.saccades_putative_waveforms")
 
-    training_x_waveforms, idxs = PredictSaccadesEnrichment._preformat_waveforms(wv)
-    samps = np.random.normal(size=len(idxs)*3)
+    tmp_wv = np.broadcast_to(wv[:, :, None], shape=(*wv.shape, 2))  # pretend this epoch waveform is a direction to use the same preprocessing func
+    training_x_waveforms, idxs = PredictSaccadesEnrichment._preformat_waveforms(tmp_wv)
     if epoch_labels is None:
+        samps = np.random.normal(size=len(idxs) * 3)
         epoch_labels = [[np.abs(samps[s*2-1])*-1, np.abs(samps[s*2])] for s in range(len(samps[2:len(idxs)*2+1:2]))]  # List of pairs of offsets from peak for each waveform to train on TODO divide by fps?
 
     # Transformer
@@ -164,6 +166,8 @@ def _get_epoch_training_data(direction):
     train_y = train_y[direction_idxs]
     train_z = train_z[direction_idxs]
 
+    train_z = train_z.reshape(-1, 1)  # Reshape so each 'label' is it's own array [1,1,1,..] -> [[1],[1],..]
+
     return train_x, train_y, train_z
 
 
@@ -184,6 +188,22 @@ def _find_joshdata(root_directory):
     return found_sessions
 
 
+def dictify(data):
+    import h5py
+    if isinstance(data, h5py.Dataset):
+        try:
+            return list(data[:])
+        except Exception as e:
+            print(f"Errorrrrrr {str(e)}")
+            return "BROKEN!!!!!!!!!!!!!!!!!!!!!!"
+    else:
+        dd = dict(data)
+        d = {}
+        for k, v in dd.items():
+            d[k] = dictify(v)
+        return d
+
+
 def validation():
     # 1 is nasal, -1 is temporal
     nasal_x, nasal_y, nasal_z = _get_epoch_training_data(1)
@@ -191,10 +211,11 @@ def validation():
     dx, dy = _get_direction_training_data()
 
     # list of folderpaths with a dlc.csv, timestamps.txt and output.hdf
-    sessions_to_validate = _find_joshdata("E:\\AnnaTraining\\joshdata")
+    sessions_to_validate = _find_joshdata("E:\\AnnaTrainingData\\joshdata")
 
     for name, dlc_csv, timestamps, output_hdf in sessions_to_validate:
         temp_nwbfile_name = "test_nwb.nwb"
+        h5data = h5py.File(output_hdf)
 
         SimpleNWB.write(SimpleNWB.test_nwb(), temp_nwbfile_name)
         sess = NWBSession(temp_nwbfile_name)
@@ -218,9 +239,12 @@ def validation():
 
         sess.enrich(predictive_enrichment)
         sess.save(f"{name}_enriched.nwb")
-
+        print("Dictifying hdf and sess")
+        dd2 = dictify(h5data)
+        dd = sess.to_dict()
+        # TODO Compare and fix
         tw = 2
-
+        break
 
     tw = 2
 
