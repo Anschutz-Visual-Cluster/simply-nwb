@@ -70,7 +70,7 @@ def _get_pretrained_epoch_models(sess, wv=None, epoch_labels=None):
         wv = sess.pull("PutativeSaccades.saccades_putative_waveforms")
 
     tmp_wv = np.broadcast_to(wv[:, :, None], shape=(*wv.shape, 2))  # pretend this epoch waveform is a direction to use the same preprocessing func
-    training_x_waveforms, idxs = PredictSaccadesEnrichment._preformat_waveforms(tmp_wv)
+    training_x_waveforms, idxs = PredictSaccadesEnrichment._preformat_waveforms(tmp_wv, num_features=num_features)
     if epoch_labels is None:
         samps = np.random.normal(size=len(idxs) * 3)
         epoch_labels = [[np.abs(samps[s*2-1])*-1, np.abs(samps[s*2])] for s in range(len(samps[2:len(idxs)*2+1:2]))]  # List of pairs of offsets from peak for each waveform to train on TODO divide by fps?
@@ -140,6 +140,7 @@ def _get_direction_training_data():
 
 def _get_epoch_training_data(direction):
     source_folder = "E:\\AnnaTrainingData"  # Scan for '*output.hdf'
+    recording_fps = 200  # TODO set me
     # want prediction/saccades/epochs/<X/y/z>
 
     train_x = []
@@ -163,7 +164,7 @@ def _get_epoch_training_data(direction):
 
     direction_idxs = np.where(train_z == direction)[0]
     train_x = train_x[direction_idxs]
-    train_y = train_y[direction_idxs]
+    train_y = train_y[direction_idxs] / recording_fps  # Divide by recording fps to get epochs in units of frames
     train_z = train_z[direction_idxs]
 
     train_z = train_z.reshape(-1, 1)  # Reshape so each 'label' is it's own array [1,1,1,..] -> [[1],[1],..]
@@ -225,8 +226,8 @@ def validation():
         sess.enrich(putative_enrichment)
 
         # Predictive
-        nasal_reg, nasal_tran = _get_pretrained_epoch_models(sess, wv=nasal_x, epoch_labels=nasal_z)
-        temp_reg, temp_tran = _get_pretrained_epoch_models(sess, wv=temporal_x, epoch_labels=temporal_z)
+        nasal_reg, nasal_tran = _get_pretrained_epoch_models(sess, wv=nasal_x, epoch_labels=nasal_y)
+        temp_reg, temp_tran = _get_pretrained_epoch_models(sess, wv=temporal_x, epoch_labels=temporal_y)
         direct = _get_pretrained_direction_model(sess, wv=dx, y_vals=dy)
 
         predictive_enrichment = PredictSaccadesEnrichment(
@@ -240,9 +241,9 @@ def validation():
         sess.enrich(predictive_enrichment)
         sess.save(f"{name}_enriched.nwb")
         print("Dictifying hdf and sess")
-        dd2 = dictify(h5data)
-        dd = sess.to_dict()
-        # TODO Compare and fix
+        orig = dictify(h5data)
+        modif = sess.to_dict()
+
         tw = 2
         break
 

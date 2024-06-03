@@ -107,12 +107,13 @@ class PutativeSaccadesEnrichment(Enrichment):
         return [
             "pose_corrected",
             "pose_interpolated",
-            "pose_decomposed"
+            "pose_decomposed",
             "pose_missing",
             "pose_reoriented",
             "pose_filtered",
             "saccades_putative_indices",
             "saccades_putative_waveforms",
+            "saccades_fps",
         ]
 
     def _run(self, pynwb_obj):
@@ -146,6 +147,7 @@ class PutativeSaccadesEnrichment(Enrichment):
         self._save_val("pose_filtered", filtered, pynwb_obj)
         self._save_val("saccades_putative_indices", saccade_indices, pynwb_obj)
         self._save_val("saccades_putative_waveforms", saccade_waveforms, pynwb_obj)
+        self._save_val("saccades_fps", [self.fps], pynwb_obj)
         self.logger.info("Done")
 
     def _correct_eye_position(self, x, y, pynwb_obj):

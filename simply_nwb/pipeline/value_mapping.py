@@ -34,12 +34,18 @@ class NWBValueMapping(object):
 
         self._mapping = {}
 
+        def _get_val(enrich_name, enrich_ky):
+            def func(mynwb):
+                myvall = mynwb.processing[f"Enrichment.{enrich_name}"][enrich_ky].data[:]
+                return myvall
+            return func
+
         for k, v in mapping.items():
             if isinstance(v, EnrichmentReference):
                 cls = v.get_classtype()
                 name = cls.get_name()
                 for ks in cls.saved_keys():
-                    self._mapping[f"{name}.{ks}"] = lambda mynwb: mynwb.processing[f"Enrichment.{name}"][ks].data[:]
+                    self._mapping[f"{name}.{ks}"] = _get_val(name, ks)
             else:
                 if not isinstance(v, list):
                     raise ValueError(f"Invalid NWBValueMapping, key '{k}' has a non-list type value '{v}'")

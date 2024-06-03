@@ -32,20 +32,19 @@ class PredictSaccadesEnrichment(Enrichment):
     @staticmethod
     def saved_keys() -> list[str]:
         return [
-            "saccades_predicted_indices",
-            "saccades_predicted_waveforms",
-            "saccades_predicted_labels",
-            "saccades_predicted_nasal_epochs",
-            "saccades_predicted_temporal_epochs",
-            "saccades_predicted_nasal_waveforms",
-            "saccades_predicted_temporal_waveforms"
+            "saccades_predicted_indices",  # (saccade_num, waveform_time, (x,y))
+            "saccades_predicted_waveforms",  # same as above
+            "saccades_predicted_labels",  # (saccade_num,)
+            "saccades_predicted_nasal_epochs",  # (saccade_num, (start,end))
+            "saccades_predicted_temporal_epochs",  # same as above
+            "saccades_predicted_nasal_waveforms",  # (saccade_num, waveform_time, (x,y))
+            "saccades_predicted_temporal_waveforms"  # same as above
         ]
 
     @staticmethod
-    def _preformat_waveforms(waveforms: np.ndarray):
+    def _preformat_waveforms(waveforms: np.ndarray, num_features=30):
         # Helper func to format the waveforms as velocities, sampled, with no NaNs
         # Expects waveforms to be a (N, t, 2) arr where N is the number of samples, t is the time length, and 2 is x,y
-        num_features = 30  # Number of features to use when resampling the data
         wav_x = waveforms[:, :, 0]
         wav_y = waveforms[:, :, 1]
         x_velocities = []
@@ -57,7 +56,7 @@ class PredictSaccadesEnrichment(Enrichment):
             if is_x_non_nan and is_y_non_nan:  # Both entries are non-nan
                 # Forward difference (discrete derivative/velocity)
                 # Resample to match the number of 'features'
-                resampd = PredictSaccadesEnrichment._resample_waveform_to_velocity(wav_x[idx])
+                resampd = PredictSaccadesEnrichment._resample_waveform_to_velocity(wav_x[idx], num_features)
                 x_velocities.append(resampd)
                 idxs.append(idx)
 
@@ -114,6 +113,9 @@ class PredictSaccadesEnrichment(Enrichment):
         # use the nasal and temporal regressor and transformers to take the current data and save predicted values
         # will need to resample X, possibly divide by fps on y (z is direction)
 
+        sacc_indices = self.get_val(self.get_name(), "saccades_predicted_indices", pynwb_obj)
+        sacc_fps = self._get_req_val("PutativeSaccades.saccades_fps", pynwb_obj)[0]
+
         for regressor, transformer, saccade_direction, name in [
                 (self._temporal_epoch_regressor, self._temporal_epoch_transformer, -1, "temporal"),
                 (self._nasal_epoch_regressor, self._nasal_epoch_transformer, 1, "nasal")]:
@@ -123,6 +125,10 @@ class PredictSaccadesEnrichment(Enrichment):
 
             reg_pred = regressor.predict(resamp)
             pred = transformer.inverse_transform(reg_pred)
+            # Broadcast the indices so we can add them to the predicted relative offsets easily
+            reshaped_sacc_indices = np.broadcast_to(sacc_indices[idxs].reshape(-1, 1),(*sacc_indices[idxs].shape, 2))
+            up_pred = pred * sacc_fps + reshaped_sacc_indices  # Convert from seconds to frames using the fps
+
             self._save_val(f"saccades_predicted_{name}_waveforms", pred_waveforms[idxs], pynwb_obj)
-            self._save_val(f"saccades_predicted_{name}_epochs", pred, pynwb_obj)
+            self._save_val(f"saccades_predicted_{name}_epochs", up_pred, pynwb_obj)
 
