@@ -82,15 +82,27 @@ def _get_pretrained_epoch_models(sess, wv=None, epoch_labels=None):
     # Regressor
     # hidden_layer_sizes = [(int(n),) for n in np.arange(2, num_features, 1)]
     hidden_layer_sizes = [(4,)]
+    # Smaller grid for faster (but worse) training, used for testing
+    # grid = {
+    #     'estimator__hidden_layer_sizes': hidden_layer_sizes,
+    #     'estimator__max_iter': [
+    #         1000,
+    #     ],
+    #     'estimator__activation': ['tanh'],  # , 'relu'],
+    #     'estimator__solver': ['sgd'],  # , 'adam'],
+    #     'estimator__alpha': [0.0001],  # , 0.05],
+    #     'estimator__learning_rate': ['constant']  # , 'adaptive'],
+    # }
+
     grid = {
         'estimator__hidden_layer_sizes': hidden_layer_sizes,
         'estimator__max_iter': [
-            1000,
+            1000000,
         ],
-        'estimator__activation': ['tanh'],  # , 'relu'],
-        'estimator__solver': ['sgd'],  # , 'adam'],
-        'estimator__alpha': [0.0001],  # , 0.05],
-        'estimator__learning_rate': ['constant']  # , 'adaptive'],
+        'estimator__activation': ['tanh', 'relu'],
+        'estimator__solver': ['sgd', 'adam'],
+        'estimator__alpha': [0.0001, 0.05],
+        'estimator__learning_rate': ['constant', 'adaptive'],
     }
 
     reg = MultiOutputRegressor(MLPRegressor(verbose=True))
