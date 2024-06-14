@@ -17,6 +17,10 @@ from simply_nwb.pipeline import NWBSession
 from simply_nwb.pipeline.enrichments.example import ExampleEnrichment
 from simply_nwb.transforms import tif_read_image
 
+# TODO
+# Also add descriptions for all fields for arr cols etc
+# More descriptive error messages for required keys/objects
+# Add gui and training labelsaccades enrichment etc
 
 def putative():
     prefix = "C:\\Users\\denma\\Documents\\GitHub\\simply-nwb\\data\\adsfasdf\\20240410\\unitME\\session001\\"
@@ -131,6 +135,13 @@ def predicting():
     
     sess.enrich(p)
     tw = 2
+
+    label_enrich = LabelSaccadesEnrichment(nwbfile)  # require PutativeSaccades
+    sess.enrich(label_enrich)  # open a gui to label, save to NWB
+    sess = NWBSession("new_session.nwb")
+    predict = PredictSaccadesEnrichment(.., training_nwbs=["sess1.nwb", "sess2.nwb"])  # Require LabelSaccadesEnrichment
+    sess.enrich(predict)
+    sess.save("latest_session.nwb")
 
 
 def _get_direction_training_data():

@@ -18,6 +18,7 @@ class Enrichment(object):
             try:
                 self._get_req_val(k, pynwb_obj)
             except Exception as e:
+                raise e
                 raise ValueError(f"Unable to find required key '{k}' for enrichment '{enrichment_name}' Error: '{str(e)}'")
 
         return self._run(pynwb_obj)
