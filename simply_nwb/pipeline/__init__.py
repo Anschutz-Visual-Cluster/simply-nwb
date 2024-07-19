@@ -33,8 +33,6 @@ class NWBSession(object):
                 self.__builtin_enrichments[cust.get_name()] = cust
 
         self.__enrichments = set()  # list of str names of current enrichments in the nwb file
-        # TODO crawl nwb using __builtin_enrichments and fill out __enrichments with existing ones
-
         for k in list(self.nwb.processing.keys()):
             if k.startswith("Enrichment."):
                 self.__enrichments.add(k[len("Enrichment."):])

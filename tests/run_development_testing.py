@@ -49,7 +49,7 @@ def _get_pretrained_direction_model(sess, wv=None, y_vals=None):
         wv = sess.pull("PutativeSaccades.saccades_putative_waveforms")
 
     tmp_wv = np.broadcast_to(wv[:, :, None], shape=(*wv.shape, 2))
-    x_velocities, idxs = PredictSaccadesEnrichment._preformat_waveforms(tmp_wv)
+    x_velocities, idxs = PredictSaccadesEnrichment.preformat_waveforms(tmp_wv)
 
     x_velocities = np.array(x_velocities)
     if y_vals is None:
@@ -74,7 +74,7 @@ def _get_pretrained_epoch_models(sess, wv=None, epoch_labels=None):
         wv = sess.pull("PutativeSaccades.saccades_putative_waveforms")
 
     tmp_wv = np.broadcast_to(wv[:, :, None], shape=(*wv.shape, 2))  # pretend this epoch waveform is a direction to use the same preprocessing func
-    training_x_waveforms, idxs = PredictSaccadesEnrichment._preformat_waveforms(tmp_wv, num_features=num_features)
+    training_x_waveforms, idxs = PredictSaccadesEnrichment.preformat_waveforms(tmp_wv, num_features=num_features)
     if epoch_labels is None:
         samps = np.random.normal(size=len(idxs) * 3)
         epoch_labels = [[np.abs(samps[s*2-1])*-1, np.abs(samps[s*2])] for s in range(len(samps[2:len(idxs)*2+1:2]))]  # List of pairs of offsets from peak for each waveform to train on TODO divide by fps?

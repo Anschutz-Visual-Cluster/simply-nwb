@@ -11,16 +11,17 @@ class Enrichment(object):
         self._required_vals_map = required_vals_map
         self.logger = logging.getLogger(self.get_name())
 
-    def run(self, pynwb_obj):
-        # TODO Check required vals here
+    def validate(self, pynwb_obj):
         enrichment_name = self.get_name()
         for k in self._required_vals_map.keys():
             try:
                 self._get_req_val(k, pynwb_obj)
             except Exception as e:
                 raise e
-                raise ValueError(f"Unable to find required key '{k}' for enrichment '{enrichment_name}' Error: '{str(e)}'")
+                # raise ValueError(f"Unable to find required key '{k}' for enrichment '{enrichment_name}' Error: '{str(e)}'")
 
+    def run(self, pynwb_obj):
+        self.validate(pynwb_obj)
         return self._run(pynwb_obj)
 
     def _save_val(self, key: str, value: Any, nwb: NWBFile):

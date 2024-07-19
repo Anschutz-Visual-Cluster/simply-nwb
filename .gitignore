@@ -7,3 +7,4 @@ dist/
 build/
 temp/
 *.nwb
+*.pickle

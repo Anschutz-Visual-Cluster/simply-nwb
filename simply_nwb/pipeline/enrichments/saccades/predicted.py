@@ -42,7 +42,7 @@ class PredictSaccadesEnrichment(Enrichment):
         ]
 
     @staticmethod
-    def _preformat_waveforms(waveforms: np.ndarray, num_features=30):
+    def preformat_waveforms(waveforms: np.ndarray, num_features=30):
         # Helper func to format the waveforms as velocities, sampled, with no NaNs
         # Expects waveforms to be a (N, t, 2) arr where N is the number of samples, t is the time length, and 2 is x,y
         wav_x = waveforms[:, :, 0]
@@ -90,7 +90,7 @@ class PredictSaccadesEnrichment(Enrichment):
         waveforms = self._get_req_val("PutativeSaccades.saccades_putative_waveforms", pynwb_obj)
         indices = self._get_req_val("PutativeSaccades.saccades_putative_indices", pynwb_obj)
         # Format the waveforms by getting velocities, also get the indexes of the waveforms that are used
-        x_velocities, idxs = self._preformat_waveforms(waveforms)
+        x_velocities, idxs = self.preformat_waveforms(waveforms)
 
         # Reindex to only include the waveforms that were formatted from above
         waveforms = waveforms[idxs]
@@ -121,7 +121,7 @@ class PredictSaccadesEnrichment(Enrichment):
                 (self._nasal_epoch_regressor, self._nasal_epoch_transformer, 1, "nasal")]:
 
             idxs = np.where(pred_labels == saccade_direction)[0]
-            resamp, idxs = self._preformat_waveforms(pred_waveforms[idxs])
+            resamp, idxs = self.preformat_waveforms(pred_waveforms[idxs])
 
             reg_pred = regressor.predict(resamp)
             pred = transformer.inverse_transform(reg_pred)
