@@ -4,6 +4,14 @@ simply\_nwb.pipeline.enrichments.saccades package
 Submodules
 ----------
 
+simply\_nwb.pipeline.enrichments.saccades.predict\_gui module
+-------------------------------------------------------------
+
+.. automodule:: simply_nwb.pipeline.enrichments.saccades.predict_gui
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 simply\_nwb.pipeline.enrichments.saccades.predicted module
 ----------------------------------------------------------
 
