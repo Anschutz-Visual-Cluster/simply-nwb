@@ -192,8 +192,10 @@ class PredictedSaccadeGUIEnrichment(PredictSaccadesEnrichment):
         tmp_wv = np.broadcast_to(wv[:, :, None], shape=(*wv.shape, 2))
         x_velocities, idxs = PredictSaccadesEnrichment.preformat_waveforms(tmp_wv)
         x_velocities = np.array(x_velocities)
+        non_nan_yvals = np.array(y_vals)[idxs]
+
         lda = LinearDiscriminantAnalysis()
-        lda.fit(x_velocities, y_vals)
+        lda.fit(x_velocities, non_nan_yvals)
 
         with open(fn, "wb") as fp:
             pickle.dump(lda, fp)
@@ -212,30 +214,30 @@ class PredictedSaccadeGUIEnrichment(PredictSaccadesEnrichment):
         standardized_epoch_labels = transformer.transform(epoch_labels)
 
         # Smaller grid for faster (but worse) training, used for testing
-        hidden_layer_sizes = [(4,)]
-        grid = {
-            'estimator__hidden_layer_sizes': hidden_layer_sizes,
-            'estimator__max_iter': [
-                1000,
-            ],
-            'estimator__activation': ['tanh'],  # , 'relu'],
-            'estimator__solver': ['sgd'],  # , 'adam'],
-            'estimator__alpha': [0.0001],  # , 0.05],
-            'estimator__learning_rate': ['constant']  # , 'adaptive'],
-        }
-
-        # Regressor
-        # hidden_layer_sizes = [(int(n),) for n in np.arange(2, num_features, 1)]
+        # hidden_layer_sizes = [(4,)]
         # grid = {
         #     'estimator__hidden_layer_sizes': hidden_layer_sizes,
         #     'estimator__max_iter': [
-        #         1000000,
+        #         1000,
         #     ],
-        #     'estimator__activation': ['tanh', 'relu'],
-        #     'estimator__solver': ['sgd', 'adam'],
-        #     'estimator__alpha': [0.0001, 0.05],
-        #     'estimator__learning_rate': ['constant', 'adaptive'],
+        #     'estimator__activation': ['tanh'],  # , 'relu'],
+        #     'estimator__solver': ['sgd'],  # , 'adam'],
+        #     'estimator__alpha': [0.0001],  # , 0.05],
+        #     'estimator__learning_rate': ['constant']  # , 'adaptive'],
         # }
+
+        # Regressor
+        hidden_layer_sizes = [(int(n),) for n in np.arange(2, num_features, 1)]
+        grid = {
+            'estimator__hidden_layer_sizes': hidden_layer_sizes,
+            'estimator__max_iter': [
+                1000000,
+            ],
+            'estimator__activation': ['tanh', 'relu'],
+            'estimator__solver': ['sgd', 'adam'],
+            'estimator__alpha': [0.0001, 0.05],
+            'estimator__learning_rate': ['constant', 'adaptive'],
+        }
 
         reg = MultiOutputRegressor(MLPRegressor(verbose=True))
         search = GridSearchCV(reg, grid)
