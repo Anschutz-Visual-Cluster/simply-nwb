@@ -20,12 +20,13 @@ Use me as a starter point to make your own enrichment
 
 
 class PredictedSaccadeGUIEnrichment(PredictSaccadesEnrichment):
-    NUM_TRAINING_SAMPLES = 5  # Needs to be at least 5
-
-    def __init__(self, recording_fps, list_of_putative_nwbs_filenames):
+    def __init__(self, recording_fps, list_of_putative_nwbs_filenames, num_training_samples):
         super().__init__(None, None, None, None, None)
         self.putat_nwbs = []
         self.putat_nwb_fps = []  # TODO atexit close?
+        self.num_training_samples = num_training_samples
+        if self.num_training_samples < 20:
+            raise ValueError("Must have at least 20 training samples!")
 
         putat = PutativeSaccadesEnrichment()
         for nwbfn in list_of_putative_nwbs_filenames:
@@ -47,7 +48,7 @@ class PredictedSaccadeGUIEnrichment(PredictSaccadesEnrichment):
     def _get_direction_gui_traindata(self):
         if self._check_for_pretained_direction_model():
             print("Model found, skipping training phase")
-            return [0, 0]
+            return [0, 0]  # Doesn't matter what we return, result will be discarded
 
         putative_waveforms_list = []
 
@@ -57,7 +58,7 @@ class PredictedSaccadeGUIEnrichment(PredictSaccadesEnrichment):
         putative_waveforms = np.vstack(putative_waveforms_list)
         putative_idxs = np.random.choice(
             np.arange(putative_waveforms.shape[0]),
-            size=PredictedSaccadeGUIEnrichment.NUM_TRAINING_SAMPLES,
+            size=self.num_training_samples,
         )
 
         gui = SaccadeDirectionLabelingGUI()
@@ -75,7 +76,7 @@ class PredictedSaccadeGUIEnrichment(PredictSaccadesEnrichment):
 
         pred_idxs = np.random.choice(
             np.arange(pred_waveforms.shape[0]),
-            size=PredictedSaccadeGUIEnrichment.NUM_TRAINING_SAMPLES,
+            size=self.num_training_samples,
         )
         gui = SaccadeEpochLabelingGUI()
         gui.inputSamples(pred_waveforms[pred_idxs, :, 0], pred_labels[pred_idxs])  # 0 is x
@@ -148,6 +149,11 @@ class PredictedSaccadeGUIEnrichment(PredictSaccadesEnrichment):
 
     def _run(self, pynwb_obj):
         # Directional model training
+        print("="*50)
+        print("MAKE SURE YOU HAVE AT LEAST 10 EXAMPLES OF LEFT AND RIGHT SACCADES!!")
+        print("MAKE SURE YOU LABEL AT LEAST 5 EPOCHS!!")
+        print("="*50)
+
         print("Collecting directional training data..")
         direction_training_data = self._get_direction_gui_traindata()
         print("Training model..")
