@@ -21,7 +21,7 @@ Code adapted from https://github.com/jbhunt/myphdlib/blob/5c5fe627507046e888eabc
 
 
 class PutativeSaccadesEnrichment(Enrichment):
-    def __init__(self, stim_name="RightCamStim", timestamp_name="rightCamTimestamps", likelihood_threshold=0.99, fps=200):
+    def __init__(self, stim_name="RightCamStim", timestamp_name="rightCamTimestamps", likelihood_threshold=0.99, fps=200, x_center="pupilCenter_x", y_center="pupilCenter_y", likelihood="pupilCenter_likelihood"):
         """
         Create a new PutativeSaccadesEnrichment
 
@@ -32,9 +32,9 @@ class PutativeSaccadesEnrichment(Enrichment):
 
         # Give the superclass a mapping of required values for this enrichment to run
         super().__init__(NWBValueMapping({
-            "x": [lambda x: x.processing, stim_name, "pupilCenter_x", lambda y: y.data[:]],
-            "y": [lambda x: x.processing, stim_name, "pupilCenter_y", lambda y: y.data[:]],
-            "likelihood": [lambda x: x.processing, stim_name, "pupilCenter_likelihood", lambda y: y.data[:]],
+            "x": [lambda x: x.processing, stim_name, x_center, lambda y: y.data[:]],
+            "y": [lambda x: x.processing, stim_name, y_center, lambda y: y.data[:]],
+            "likelihood": [lambda x: x.processing, stim_name, likelihood, lambda y: y.data[:]],
             "timestamps": [lambda x: x.stimulus, timestamp_name, lambda y: y.data[:]]
         }))
 

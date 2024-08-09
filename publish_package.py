@@ -4,6 +4,26 @@ from twine.__main__ import main as twine_main
 
 
 def main():
+    """
+    If your upload is giving HTTPError: 403 Forbidden ...
+    You need to format your .pypirc file like the following..
+
+    [distutils]
+    index-servers =
+      pypi
+      graph_judge
+
+    [pypi]
+    username = __token__
+    password = pypi-...<default pypi token you want to use>
+
+
+    [simply-nwb]
+    repository = https://upload.pypi.org/legacy/
+    username = __token__
+    password = pypi-...<project specific token here>
+    """
+
     pypirc_file = os.path.expanduser('~/.pypirc')
     if not os.path.exists(pypirc_file):
         # See https://packaging.python.org/en/latest/specifications/pypirc/ for help
@@ -13,11 +33,11 @@ def main():
         sys.argv[0],
         "upload",
         "-r",
-        "pypi",
-        "dist/*"
+        "simply_nwb",  # dont forget to change me!
+        "dist/*",
+        "--verbose"
     ]
     twine_main()
-    pass
 
 
 if __name__ == "__main__":
