@@ -20,7 +20,7 @@ Use me as a starter point to make your own enrichment
 
 
 class PredictedSaccadeGUIEnrichment(PredictSaccadesEnrichment):
-    def __init__(self, recording_fps, list_of_putative_nwbs_filenames, num_training_samples):
+    def __init__(self, recording_fps, list_of_putative_nwbs_filenames, num_training_samples, putative_kwargs):
         super().__init__(None, None, None, None, None)
         self.putat_nwbs = []
         self.putat_nwb_fps = []  # TODO atexit close?
@@ -28,7 +28,7 @@ class PredictedSaccadeGUIEnrichment(PredictSaccadesEnrichment):
         if self.num_training_samples < 20:
             raise ValueError("Must have at least 20 training samples!")
 
-        putat = PutativeSaccadesEnrichment()
+        putat = PutativeSaccadesEnrichment(**putative_kwargs)
         for nwbfn in list_of_putative_nwbs_filenames:
             if not os.path.exists(nwbfn):
                 raise ValueError(f"Cannot find file '{nwbfn}'!")
