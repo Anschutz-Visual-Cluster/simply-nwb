@@ -35,7 +35,6 @@ def main():
         "-r",
         "simply_nwb",  # dont forget to change me!
         "dist/*",
-        "--verbose"
     ]
     twine_main()
 
