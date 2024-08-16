@@ -41,8 +41,8 @@ class SaccadeEpochLabelingGUI(object):
         self.fig.set_figheight(figsize[1])
         self.lines = {
             'wave': lines.Line2D([0], [0], color='k', alpha=0.5),
-            'start': lines.Line2D([0, 0], self.ax.get_ylim(), color='r', alpha=0.5),
-            'stop': lines.Line2D([0, 0], self.ax.get_ylim(), color='b', alpha=0.5)
+            'start': lines.Line2D([0, 0], self.ax.get_ylim(), color='green', alpha=0.5),
+            'stop': lines.Line2D([0, 0], self.ax.get_ylim(), color='red', alpha=0.5)
         }
         for line in self.lines.values():
             self.ax.add_line(line)

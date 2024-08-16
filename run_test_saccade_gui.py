@@ -70,7 +70,6 @@ def graph_saccades(sess: NWBSession):
     [plt.plot(d, color="blue") for d in xwaves[neg]]
     [plt.plot(d, color="orange") for d in xwaves[pos]]
 
-
     plt.show()
     tw = 2
 
