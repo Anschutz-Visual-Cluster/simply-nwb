@@ -7,6 +7,7 @@ from simply_nwb import SimpleNWB
 from simply_nwb.pipeline import NWBSession
 from simply_nwb.pipeline.enrichments.saccades import PutativeSaccadesEnrichment
 from simply_nwb.pipeline.enrichments.saccades.predict_gui import PredictedSaccadeGUIEnrichment
+import matplotlib.pyplot as plt
 
 
 def create_nwb():
@@ -35,42 +36,76 @@ def create_nwb():
         keywords=["mouse"],
         # related_publications="DOI::LINK GOES HERE FOR RELATED PUBLICATIONS"
     )
+    # For creating a dummy test nwb you can do SimpleNWB.test_nwb() to get an nwb object in memory
     return nwbfile
 
 
+def create_putative_nwb(dlc_filepath, timestamp_filepath):
+    # Create a NWB file to put our data into
+    print("Creating base NWB..")
+    raw_nwbfile = create_nwb()  # This is the RAW nwbfile, direct output from a 'conversion script' in this example we just make a dummy one
+
+    # Prepare an enrichment object to be run, and insert the raw data into our nwb in memory
+    enrichment = PutativeSaccadesEnrichment.from_raw(raw_nwbfile, dlc_filepath, timestamp_filepath)
+
+    sess = NWBSession(raw_nwbfile)  # Create a session using our in-memory NWB
+    # Enrich our nwb into 'putative' saccades (what we think *might* be a saccade)
+    print("Enriching to putative NWB..")
+    sess.enrich(enrichment)
+
+    sess.save("putative.nwb")  # Save to file
+
+
+def graph_saccades(sess: NWBSession):
+    print(sess.available_enrichments())
+    print(sess.available_keys("PredictSaccades"))
+    waveforms = sess.pull("PredictSaccades.saccades_predicted_waveforms")  # Pull x and y saccade waveforms
+    xwaves = waveforms[:, :, 0]  # Dimensions are (saccade num, t, 2) where 2 is x/y
+    for idx in range(xwaves.shape[0]):
+        plt.plot(xwaves[idx])
+    plt.show()
+
+
 def main():
+    ###
+    os.environ["NWB_DEBUG"] = "True"  # NOTE ONLY USE TO QUICKLY TRAIN A MODEL (not for real data)
+    ####
+
     # Get the filenames for the timestamps.txt and dlc CSV
-    dlc_filepath = f"data/20230420_unitME_session001_rightCam-0000DLC_resnet50_GazerMay24shuffle1_1030000.csv"
-    timestamp_filepath = f"data/20230420_unitME_session001_rightCam_timestamps.txt"
+    prefix = "data"
+    dlc_filepath = os.path.abspath(os.path.join(prefix, "20240410_unitME_session001_rightCam-0000DLC_resnet50_GazerMay24shuffle1_1030000.csv"))
+    timestamp_filepath = os.path.abspath(os.path.join(prefix, "20240410_unitME_session001_rightCam_timestamps.txt"))
 
-    if os.path.exists("putative.nwb"):
-        # Create a NWB file to put our data into
-        print("Creating base NWB..")
-        nwbfile = create_nwb()
-        SimpleNWB.write(nwbfile, "base.nwb")
-        del nwbfile
+    if not os.path.exists("putative.nwb"):
+        create_putative_nwb(dlc_filepath, timestamp_filepath)
 
-        # Load our newly created 'base' NWB and put in the 'putative' saccades (what we think *might* be a saccade)
-        print("Enriching with putative NWB..")
-        fp = NWBHDF5IO("base.nwb", "r")
-        nwbfile = fp.read()
+    sess = NWBSession("putative.nwb")  # Load in the session we would like to enrich to predictive saccades
 
-        enrichment = PutativeSaccadesEnrichment.from_raw(nwbfile, dlc_filepath, timestamp_filepath)
-        SimpleNWB.write(nwbfile, "dlcdata.nwb")
-        del nwbfile
-
-        sess = NWBSession("dlcdata.nwb")  # Save to file
-        sess.enrich(enrichment)
-        sess.save("putative.nwb")  # Save to file
-        del sess
-
-    sess = NWBSession("putative.nwb")
     # Take our putative saccades and do the actual prediction for the start, end time, and time location
     print("Adding predictive data..")
-    enrich = PredictedSaccadeGUIEnrichment(200, ["putative.nwb"], 20)
+
+    # For 'putative_kwargs' put the arguments in dict kwarg style for the PutativeSaccadesEnrichment() if it is non-default. Format like {"x_center": .., }
+    # this example there are no extra kwargs, but if you name your DLC columns different, you will need to tell it which column names relate to your data
+    # columns will be concatenated with the above column, so something like
+    # a,b,c
+    # x,y,z
+    # will be turned into the keys a_x, b_y, and z_c
+    # so you would use {"x_center": "a_x", ..}
+    # Normally for list_of_putative_nwbs_filenames you would want more than one session, this is where the training data
+    # will be sampled from
+    enrich = PredictedSaccadeGUIEnrichment(200, ["putative.nwb"], 20, putative_kwargs={})
+    # This will open two guis, where you will identify which direction the saccade is, and what the start and stop is
+    # when the gui data entry is done, it will begin training the classifier models. The models are saved so if
+    # something breaks it can be re-started easily
+    # Next time you enrich an NWB, if the model files are in the directory where this script is being run, it will use
+    # those instead of training a new model
+    # You will need to label at least 10 directional saccade, at least 2 of each direction (BARE MINIMUM, NOT GOOD FOR ACTUAL DATA)
+    # and at least 10 epochs
     sess.enrich(enrich)
     print("Saving to NWB")
-    sess.save("my_session_fulldata.nwb")  # Save as our finalized session, ready for analysis
+    sess.save("predicted.nwb")  # Save as our finalized session, ready for analysis
+
+    graph_saccades(sess)
     tw = 2
 
 

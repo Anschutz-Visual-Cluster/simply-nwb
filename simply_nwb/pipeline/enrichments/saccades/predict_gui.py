@@ -214,30 +214,31 @@ class PredictedSaccadeGUIEnrichment(PredictSaccadesEnrichment):
         standardized_epoch_labels = transformer.transform(epoch_labels)
 
         # Smaller grid for faster (but worse) training, used for testing
-        # hidden_layer_sizes = [(4,)]
-        # grid = {
-        #     'estimator__hidden_layer_sizes': hidden_layer_sizes,
-        #     'estimator__max_iter': [
-        #         1000,
-        #     ],
-        #     'estimator__activation': ['tanh'],  # , 'relu'],
-        #     'estimator__solver': ['sgd'],  # , 'adam'],
-        #     'estimator__alpha': [0.0001],  # , 0.05],
-        #     'estimator__learning_rate': ['constant']  # , 'adaptive'],
-        # }
-
-        # Regressor
-        hidden_layer_sizes = [(int(n),) for n in np.arange(2, num_features, 1)]
-        grid = {
-            'estimator__hidden_layer_sizes': hidden_layer_sizes,
-            'estimator__max_iter': [
-                1000000,
-            ],
-            'estimator__activation': ['tanh', 'relu'],
-            'estimator__solver': ['sgd', 'adam'],
-            'estimator__alpha': [0.0001, 0.05],
-            'estimator__learning_rate': ['constant', 'adaptive'],
-        }
+        if "NWB_DEBUG" in os.environ and os.environ["NWB_DEBUG"] == "True":
+            hidden_layer_sizes = [(4,)]
+            grid = {
+                'estimator__hidden_layer_sizes': hidden_layer_sizes,
+                'estimator__max_iter': [
+                    1000,
+                ],
+                'estimator__activation': ['tanh'],  # , 'relu'],
+                'estimator__solver': ['sgd'],  # , 'adam'],
+                'estimator__alpha': [0.0001],  # , 0.05],
+                'estimator__learning_rate': ['constant']  # , 'adaptive'],
+            }
+        else:
+            # Regressor
+            hidden_layer_sizes = [(int(n),) for n in np.arange(2, num_features, 1)]
+            grid = {
+                'estimator__hidden_layer_sizes': hidden_layer_sizes,
+                'estimator__max_iter': [
+                    1000000,
+                ],
+                'estimator__activation': ['tanh', 'relu'],
+                'estimator__solver': ['sgd', 'adam'],
+                'estimator__alpha': [0.0001, 0.05],
+                'estimator__learning_rate': ['constant', 'adaptive'],
+            }
 
         reg = MultiOutputRegressor(MLPRegressor(verbose=True))
         search = GridSearchCV(reg, grid)

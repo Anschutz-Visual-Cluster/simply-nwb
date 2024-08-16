@@ -1,28 +1,32 @@
 import logging
 from typing import Optional, Any
-from pynwb import NWBHDF5IO
 
+import pynwb
+from pynwb import NWBHDF5IO
 from simply_nwb import SimpleNWB
 from simply_nwb.pipeline.enrichments import Enrichment
 from spencer_funcs.autodiscovery import discover_wrapper
-
 from simply_nwb.pipeline.value_mapping import NWBValueMapping
 
 
 class NWBSession(object):
-    def __init__(self, filename, custom_enrichments: Optional[list[type]] = None):
+    def __init__(self, filename_or_nwbobj, custom_enrichments: Optional[list[type]] = None):
         """
         Create a new NWB Session object from a given nwb filename. Will automatically detect enrichments in the NWB
         and compare to available. Can pass a list of custom enrichments to load in if they're not in this library
 
-        :param filename: filepath to the nwb file
+        :param filename_or_nwbobj: filepath to the nwb file or pynwb.NWBFile object
         :param custom_enrichments: list of class types for classes inheriting the Enrichment class
         """
+        if isinstance(filename_or_nwbobj, pynwb.NWBFile):
+            self.nwb = filename_or_nwbobj
+            self._nwb_fp = None
+        elif isinstance(filename_or_nwbobj, str):
+            self._nwb_fp = NWBHDF5IO(filename_or_nwbobj)
+            self.nwb = self._nwb_fp.read()
 
         logging.basicConfig(level=logging.INFO)
         self.logger = logging.getLogger("NWBSession")
-        self.nwb_fp = NWBHDF5IO(filename)
-        self.nwb = self.nwb_fp.read()  # TODO atexit close me?
 
         self.__builtin_enrichments = discover_enrichments()
         if custom_enrichments is not None:
@@ -36,7 +40,10 @@ class NWBSession(object):
         for k in list(self.nwb.processing.keys()):
             if k.startswith("Enrichment."):
                 self.__enrichments.add(k[len("Enrichment."):])
-        tw = 2
+
+    def __del__(self):
+        if self._nwb_fp is not None:
+            self._nwb_fp.close()
 
     def available_enrichments(self):
         return list(self.__enrichments)
