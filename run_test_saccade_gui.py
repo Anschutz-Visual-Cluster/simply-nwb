@@ -103,7 +103,7 @@ def main():
     # and at least 10 epochs
     # To label direction, click the radio button (circle button) on the left and then click next
     # To label epoch timing, select start/stop and move the line with the arrow keys to the approximate start/stop of the saccade
-    
+
     sess.enrich(enrich)
     print("Saving to NWB")
     sess.save("predicted.nwb")  # Save as our finalized session, ready for analysis
