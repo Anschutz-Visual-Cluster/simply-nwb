@@ -7,13 +7,16 @@
   - [OneWayFileSync Example data](https://drive.google.com/file/d/1A6bjfzAqj4XejRcgMU94usPJR7id1Hs3/view?usp=sharing)
   - [NWB Transfer example data](https://drive.google.com/file/d/1p4-X9Ys8n677ACiwxmgOmTqcTqN-uZFZ/view?usp=sharing)
 
-## Basics
+## Basics - Custom Documentation
+ 
+### SimplyNWB Docs
+- [SimplyNWB Docs](https://simply-nwb.readthedocs.io/en/latest/index.html)
 
+## Basics - Official Documentation
 ### Getting Started
 
 - [PyNWB Basics](https://pynwb.readthedocs.io/en/stable/tutorials/general/plot_file.html#sphx-glr-tutorials-general-plot-file-py)
 - [NWB Anatomy](https://nwb-overview.readthedocs.io/en/latest/intro_to_nwb/2_file_structure.html#file-hierarchy)
-- [SimplyNWB Docs](https://simply-nwb.readthedocs.io/en/latest/index.html)
 
 ### Best practices
 
