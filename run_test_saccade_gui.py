@@ -1,5 +1,6 @@
 import os
 
+import numpy as np
 import pendulum
 from pynwb import NWBHDF5IO
 from pynwb.file import Subject
@@ -61,9 +62,17 @@ def graph_saccades(sess: NWBSession):
     print(sess.available_keys("PredictSaccades"))
     waveforms = sess.pull("PredictSaccades.saccades_predicted_waveforms")  # Pull x and y saccade waveforms
     xwaves = waveforms[:, :, 0]  # Dimensions are (saccade num, t, 2) where 2 is x/y
-    for idx in range(xwaves.shape[0]):
-        plt.plot(xwaves[idx])
+
+    dirs = sess.pull("PredictSaccades.saccades_predicted_labels")
+    neg = np.where(dirs == -1.0)[0]
+    pos = np.where(dirs == 1.0)[0]
+
+    [plt.plot(d, color="blue") for d in xwaves[neg]]
+    [plt.plot(d, color="orange") for d in xwaves[pos]]
+
+
     plt.show()
+    tw = 2
 
 
 def main():
