@@ -42,9 +42,14 @@ class PredictSaccadesEnrichment(Enrichment):
         ]
 
     @staticmethod
-    def preformat_waveforms(waveforms: np.ndarray, num_features=30):
+    def preformat_waveforms(waveforms: np.ndarray, num_features=30, single_dim=False):
         # Helper func to format the waveforms as velocities, sampled, with no NaNs
         # Expects waveforms to be a (N, t, 2) arr where N is the number of samples, t is the time length, and 2 is x,y
+        if single_dim:
+            waveforms = waveforms[:, :, None]
+            waveforms = np.pad(waveforms, ((0, 0), (0, 0), (0, 1)), constant_values=-1)
+            # add new axis and pad with -1 vals to mimic the extra missing axis
+
         wav_x = waveforms[:, :, 0]
         wav_y = waveforms[:, :, 1]
         x_velocities = []
@@ -121,7 +126,7 @@ class PredictSaccadesEnrichment(Enrichment):
                 (self._nasal_epoch_regressor, self._nasal_epoch_transformer, 1, "nasal")]:
 
             idxs = np.where(pred_labels == saccade_direction)[0]
-            resamp, idxs = self.preformat_waveforms(pred_waveforms[idxs])
+            resamp, idxs = self.preformat_waveforms(pred_waveforms[idxs], single_dim=True)
 
             reg_pred = regressor.predict(resamp)
             pred = transformer.inverse_transform(reg_pred)

@@ -45,10 +45,29 @@ class PredictedSaccadeGUIEnrichment(PredictSaccadesEnrichment):
 
         self.recording_fps = recording_fps
 
+    def _get_direction_prelabeled_data_name(self):
+        return "predict_gui_directional_trainingdata.pickle"
+
+    def _save_direction_prelabeled_data(self, x, y):
+        fn = self._get_direction_prelabeled_data_name()
+        with open(fn, "wb") as f:
+            print("Saving prelabeled direction data..")
+            pickle.dump((x, y), f)
+
+    def _get_direction_prelabeled_data(self):
+        fn = self._get_direction_prelabeled_data_name()
+        if os.path.exists(fn):
+            print("Loading direction labeled data..")
+            with open(fn, "rb") as f:
+                return pickle.load(f)
+        else:
+            print("No labeled data found for direction model found..")
+            return False
+
     def _get_direction_gui_traindata(self):
-        if self._check_for_pretained_direction_model():
-            print("Model found, skipping training phase")
-            return [0, 0]  # Doesn't matter what we return, result will be discarded
+        result = self._get_direction_prelabeled_data()
+        if result:
+            return result
 
         putative_waveforms_list = []
 
@@ -65,8 +84,9 @@ class PredictedSaccadeGUIEnrichment(PredictSaccadesEnrichment):
         gui.inputSamples(putative_waveforms[putative_idxs, :, 0])  # 0 is x
         while gui.isRunning():
             continue
-
-        return gui.trainingData
+        x, y = gui.trainingData
+        self._save_direction_prelabeled_data(x, y)
+        return x, y
 
     def _get_epoch_gui_traindata(self, pred_waveforms, pred_labels):
         models = self._check_for_epoch_models()
@@ -74,12 +94,8 @@ class PredictedSaccadeGUIEnrichment(PredictSaccadesEnrichment):
             print("Loading pretrained models for epochs..")
             return [[0], [0], [0]]
 
-        pred_idxs = np.random.choice(
-            np.arange(pred_waveforms.shape[0]),
-            size=self.num_training_samples,
-        )
         gui = SaccadeEpochLabelingGUI()
-        gui.inputSamples(pred_waveforms[pred_idxs, :, 0], pred_labels[pred_idxs])  # 0 is x
+        gui.inputSamples(pred_waveforms, pred_labels)  # 0 is x
         while gui.isRunning():
             continue
 
@@ -155,12 +171,12 @@ class PredictedSaccadeGUIEnrichment(PredictSaccadesEnrichment):
         print("="*50)
 
         print("Collecting directional training data..")
-        direction_training_data = self._get_direction_gui_traindata()
+        pred_waveforms, pred_labels = self._get_direction_gui_traindata()
         print("Training model..")
-        direction_model = PredictedSaccadeGUIEnrichment.get_pretrained_direction_model(*direction_training_data)
+        direction_model = PredictedSaccadeGUIEnrichment.get_pretrained_direction_model(pred_waveforms, pred_labels)
         self._direction_cls = direction_model
         print("Predicting directions..")
-        pred_labels, pred_waveforms = self._predict_saccade_direction(pynwb_obj)
+        self._predict_saccade_direction(pynwb_obj)
 
         # Epoch model training
         print("Collecting directional training data..")
