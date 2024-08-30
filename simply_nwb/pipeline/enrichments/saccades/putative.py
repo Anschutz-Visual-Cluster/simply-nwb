@@ -122,6 +122,14 @@ class PutativeSaccadesEnrichment(Enrichment):
             "saccades_fps",
         ]
 
+    def _interpolate_eyeposition(self, val):
+        # Sometimes frames drop or the mouse closes it's eye(s) so we need to fill those values since they are NaN
+        xvals = np.arange(0, len(val))
+        non_nan_idxs = np.where(np.logical_not(np.isnan(val)))[0]
+        interpd = np.interp(xvals, non_nan_idxs, val[non_nan_idxs])
+        assert len(np.where(np.isnan(interpd))[0]) == 0, "Cannot interpolate, NaN values still exist!"
+        return interpd
+
     def _run(self, pynwb_obj):
         """
         Enrich the nwb
@@ -134,10 +142,17 @@ class PutativeSaccadesEnrichment(Enrichment):
         x = self._get_req_val("x", pynwb_obj)
         y = self._get_req_val("y", pynwb_obj)
         likelihood = self._get_req_val("likelihood", pynwb_obj)
-        x[likelihood < self.likelihood_threshold] = np.nan  # Set eye pos values to nan if they dont meet the threshold
+        x[likelihood < self.likelihood_threshold] = np.nan  # Set eye pos values to nan if they don't meet the threshold
         y[likelihood < self.likelihood_threshold] = np.nan
+        # if >10%, then error, else interpolate
+        ten_percent = int(len(x)*.1)
+        if len(np.where(np.isnan(x))[0]) > ten_percent or len(np.where(np.isnan(y))[0]) > ten_percent:
+            raise ValueError("More than 10% of datapoints in CSV are NaN! Unable to continue!")
 
         corrected = self._correct_eye_position(x, y, pynwb_obj)  # pose/corrected
+        corrected[:, 0] = self._interpolate_eyeposition(corrected[:, 0])
+        corrected[:, 1] = self._interpolate_eyeposition(corrected[:, 1])  # Remove NaNs
+
         interpolated = self._interpolate_eye_position(corrected)  # pose/interpolated
         decomposed, missing_data_mask = self._decompose_eye_position(interpolated)  # pose/decomposed and pose/missing/<eye>
         reoriented = self._reorient_eye_position(decomposed, corrected)  # pose/reoriented

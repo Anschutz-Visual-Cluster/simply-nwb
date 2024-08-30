@@ -8,3 +8,4 @@ build/
 temp/
 *.nwb
 *.pickle
+*.ipynb
