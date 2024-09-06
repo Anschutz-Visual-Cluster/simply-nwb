@@ -95,7 +95,8 @@ class PredictedSaccadeGUIEnrichment(PredictSaccadesEnrichment):
             return [[0], [0], [0]]
 
         gui = SaccadeEpochLabelingGUI()
-        gui.inputSamples(pred_waveforms, pred_labels)  # 0 is x
+        nonzero_idxs = np.logical_not(pred_labels == 0)[:, 0]  # Dont label epochs of noise
+        gui.inputSamples(pred_waveforms[nonzero_idxs], pred_labels[nonzero_idxs])
         while gui.isRunning():
             continue
 
