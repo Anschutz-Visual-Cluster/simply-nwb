@@ -56,7 +56,8 @@ class PutativeSaccadesEnrichment(Enrichment):
             description: str = None,
             x_center="pupilCenter_x",
             y_center="pupilCenter_y",
-            likelihood="pupilCenter_likelihood"
+            likelihood="pupilCenter_likelihood",
+            likelihood_threshold=0.99
     ) -> 'PutativeSaccadesEnrichment':
         """
         Create a PutativeSaccadeEnrichment from raw files rather than automagically from an NWB file with existing data
@@ -75,10 +76,11 @@ class PutativeSaccadesEnrichment(Enrichment):
         :param x_center: Alternate key name for pupil center x
         :param y_center: Alternate key name for pupil center y
         :param likelihood: Alternate key name for likelihood
+        :param  likelihood_threshold: threshold for a datapoint to keep
         :return: Enrichment object
         """
 
-        enr = PutativeSaccadesEnrichment(stim_name=stim_name, fps=fps, timestamp_name=timestamp_name, x_center=x_center, y_center=y_center, likelihood=likelihood)
+        enr = PutativeSaccadesEnrichment(stim_name=stim_name, fps=fps, timestamp_name=timestamp_name, x_center=x_center, y_center=y_center, likelihood=likelihood, likelihood_threshold=likelihood_threshold)
 
         # Add DLC
         SimpleNWB.eyetracking_add_to_processing(

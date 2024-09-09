@@ -1,6 +1,6 @@
 from setuptools import setup, find_packages
 
-VERSION = "1.1.9"
+VERSION = "1.1.10"
 
 
 def parse_requirements(requirement_file):
