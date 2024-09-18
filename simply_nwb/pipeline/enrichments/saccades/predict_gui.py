@@ -14,10 +14,6 @@ from sklearn.neural_network import MLPRegressor
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import GridSearchCV
 
-"""
-Use me as a starter point to make your own enrichment
-"""
-
 
 class PredictedSaccadeGUIEnrichment(PredictSaccadesEnrichment):
     def __init__(self, recording_fps, list_of_putative_nwbs_filenames, num_training_samples, putative_kwargs):

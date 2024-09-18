@@ -28,7 +28,7 @@ class NWBSession(object):
         logging.basicConfig(level=logging.INFO)
         self.logger = logging.getLogger("NWBSession")
 
-        self.__builtin_enrichments = discover_enrichments()
+        self.__builtin_enrichments: dict[str, Enrichment.__class__] = discover_enrichments()  # str: EnrichmentClass
         if custom_enrichments is not None:
             for cust in custom_enrichments:
                 if not isinstance(cust, type):
@@ -56,9 +56,12 @@ class NWBSession(object):
                 d[enrich][ky] = self.pull(f"{enrich}.{ky}")
         return d
 
-    def available_keys(self, enrichment_name):
+    def _check_enrichment_name(self, enrichment_name):
         if enrichment_name not in self.__enrichments:
             raise ValueError(f"Enrichment '{enrichment_name}' not found in NWB, found '{self.available_enrichments()}'")
+
+    def available_keys(self, enrichment_name):
+        self._check_enrichment_name(enrichment_name)
         return Enrichment.keys(enrichment_name, self.nwb)
 
     def enrich(self, enrichment: Enrichment):
@@ -69,6 +72,19 @@ class NWBSession(object):
         enrichment.run(self.nwb)
         self.__enrichments.add(enrichment.get_name())
 
+    def description(self, namespace: str) -> dict[str, str]:
+        self._check_enrichment_name(namespace)
+        return self.__builtin_enrichments[namespace].descriptions()
+
+    def _split_namespace_str(self, namespaced_key: str) -> [str, str]:
+        namespace = namespaced_key.split(".")[0]  # namespace, eg 'ExampleEnrichment' from 'ExampleEnrichment.myvar'
+        key = ".".join(namespaced_key.split(".")[1:])  # The rest, 'myvar'
+
+        if namespace not in self.__enrichments:
+            raise ValueError(f"Enrichment '{namespace}' not found in this NWBSession! Found enrichments '{str(list(self.__enrichments))}'")
+
+        return namespace, key
+
     def pull(self, namespaced_key: str) -> Any:
         """
         Pull data from the NWB using namespaced valued from the enrichments
@@ -76,12 +92,7 @@ class NWBSession(object):
         :param namespaced_key: Key for the value to retrieve, namespaced. ie ExampleEnrichment.myvar
         """
 
-        namespace = namespaced_key.split(".")[0]  # namespace, eg 'ExampleEnrichment' from 'ExampleEnrichment.myvar'
-        key = ".".join(namespaced_key.split(".")[1:])  # The rest, 'myvar'
-
-        if namespace not in self.__enrichments:
-            raise ValueError(f"Enrichment '{namespace}' not found in this NWBSession! Found enrichments '{str(list(self.__enrichments))}'")
-
+        namespace, key = self._split_namespace_str(namespaced_key)
         val = self.__builtin_enrichments[namespace].get_val(namespace, key, self.nwb)
         return val
 

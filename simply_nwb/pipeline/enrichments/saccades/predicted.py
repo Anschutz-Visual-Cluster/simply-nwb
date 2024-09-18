@@ -32,14 +32,26 @@ class PredictSaccadesEnrichment(Enrichment):
     @staticmethod
     def saved_keys() -> list[str]:
         return [
-            "saccades_predicted_indices",  # (saccade_num, waveform_time, (x,y))
-            "saccades_predicted_waveforms",  # same as above
+            "saccades_predicted_peak_indices",  # (saccade_num, (x,y))
+            "saccades_predicted_all_waveforms",  # same as above
             "saccades_predicted_labels",  # (saccade_num,)
             "saccades_predicted_nasal_epochs",  # (saccade_num, (start,end))
             "saccades_predicted_temporal_epochs",  # same as above
             "saccades_predicted_nasal_waveforms",  # (saccade_num, waveform_time, (x,y))
             "saccades_predicted_temporal_waveforms"  # same as above
         ]
+
+    @staticmethod
+    def descriptions() -> dict[str, str]:
+        return {
+            "saccades_predicted_peak_indices": "Indexes into time of the velocity peak (centers) of the waveforms (saccadenum, x/y)",
+            "saccades_predicted_all_waveforms": "All waveforms, including noise, uncorrelated (saccadenum, time, x/y)",
+            "saccades_predicted_labels": "Predicted label for the waveforms",
+            "saccades_predicted_nasal_epochs": "Start and end of the nasal saccades (saccadenum, start/end)",
+            "saccades_predicted_temporal_epochs": "Start and end of the temporal saccades (saccadenum, start/end)",
+            "saccades_predicted_nasal_waveforms": "Waveforms for only nasal saccades (saccadenum, time, x/y)",
+            "saccades_predicted_temporal_waveforms": "Waveforms for only temporal saccades (saccadenum, time, x/y)"
+        }
 
     @staticmethod
     def preformat_waveforms(waveforms: np.ndarray, num_features=30, single_dim=False):
@@ -93,7 +105,7 @@ class PredictSaccadesEnrichment(Enrichment):
         self.logger.info("Predicting saccade waveform labels (direction)..")
         # Pull waveforms and indices from putative saccades
         waveforms = self._get_req_val("PutativeSaccades.saccades_putative_waveforms", pynwb_obj)
-        indices = self._get_req_val("PutativeSaccades.saccades_putative_indices", pynwb_obj)
+        indices = self._get_req_val("PutativeSaccades.saccades_putative_peak_indices", pynwb_obj)
         # Format the waveforms by getting velocities, also get the indexes of the waveforms that are used
         x_velocities, idxs = self.preformat_waveforms(waveforms)
 
@@ -104,8 +116,8 @@ class PredictSaccadesEnrichment(Enrichment):
         # Predict -1, 0, or 1
         pred_labels = self._direction_cls.predict(x_velocities)
 
-        self._save_val("saccades_predicted_indices", indices, pynwb_obj)
-        self._save_val("saccades_predicted_waveforms", waveforms, pynwb_obj)
+        self._save_val("saccades_predicted_peak_indices", indices, pynwb_obj)
+        self._save_val("saccades_predicted_all_waveforms", waveforms, pynwb_obj)
         self._save_val("saccades_predicted_labels", pred_labels, pynwb_obj)
         return pred_labels, waveforms
 
@@ -118,22 +130,22 @@ class PredictSaccadesEnrichment(Enrichment):
         # use the nasal and temporal regressor and transformers to take the current data and save predicted values
         # will need to resample X, possibly divide by fps on y (z is direction)
 
-        sacc_indices = self.get_val(self.get_name(), "saccades_predicted_indices", pynwb_obj)
+        sacc_indices = self.get_val(self.get_name(), "saccades_predicted_peak_indices", pynwb_obj)
         sacc_fps = self._get_req_val("PutativeSaccades.saccades_fps", pynwb_obj)[0]
 
         for regressor, transformer, saccade_direction, name in [
                 (self._temporal_epoch_regressor, self._temporal_epoch_transformer, -1, "temporal"),
                 (self._nasal_epoch_regressor, self._nasal_epoch_transformer, 1, "nasal")]:
 
-            idxs = np.where(pred_labels == saccade_direction)[0]
-            resamp, idxs = self.preformat_waveforms(pred_waveforms[idxs], single_dim=True)
+            dir_idxs = np.where(pred_labels == saccade_direction)[0]
+            resamp, nonnan_idxs = self.preformat_waveforms(pred_waveforms[dir_idxs], single_dim=True)
 
             reg_pred = regressor.predict(resamp)
             pred = transformer.inverse_transform(reg_pred)
             # Broadcast the indices so we can add them to the predicted relative offsets easily
-            reshaped_sacc_indices = np.broadcast_to(sacc_indices[idxs].reshape(-1, 1),(*sacc_indices[idxs].shape, 2))
+            reshaped_sacc_indices = np.broadcast_to(sacc_indices[dir_idxs][nonnan_idxs].reshape(-1, 1),(*sacc_indices[dir_idxs][nonnan_idxs].shape, 2))
             up_pred = pred * sacc_fps + reshaped_sacc_indices  # Convert from seconds to frames using the fps
 
-            self._save_val(f"saccades_predicted_{name}_waveforms", pred_waveforms[idxs], pynwb_obj)
+            self._save_val(f"saccades_predicted_{name}_waveforms", pred_waveforms[dir_idxs][nonnan_idxs], pynwb_obj)
             self._save_val(f"saccades_predicted_{name}_epochs", up_pred, pynwb_obj)
 

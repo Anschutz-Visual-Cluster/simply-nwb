@@ -119,10 +119,24 @@ class PutativeSaccadesEnrichment(Enrichment):
             "pose_missing",
             "pose_reoriented",
             "pose_filtered",
-            "saccades_putative_indices",
+            "saccades_putative_peak_indices",
             "saccades_putative_waveforms",
             "saccades_fps",
         ]
+
+    @staticmethod
+    def descriptions() -> dict[str, str]:
+        return {
+            "pose_corrected": "Corrected eye position (saccadenum, time, x/y)",
+            "pose_interpolated": "Interpolated eye position (saccadenum, time, x/y)",
+            "pose_decomposed": "PCA Imputed eye positions (saccadenum, time, x/y)",
+            "pose_missing": "Indexes of missing (nan) position values (saccadenum, time, x/y)",
+            "pose_reoriented": "Reoriented positions, so they all start from the same 0 (saccadenum, time, x/y)",
+            "pose_filtered": "Final interpolation and nan filtering of eye position pose_reoriented",
+            "saccades_putative_peak_indices": "Index into time of the center (peak velocity) of the saccade (saccadenum,)",
+            "saccades_putative_waveforms": "Waveforms of putative saccades (saccadenum, time, x/y)",
+            "saccades_fps": "single value list like [fps] with the fps used to calculate eye positions",
+        }
 
     def _interpolate_eyeposition(self, val):
         # Sometimes frames drop or the mouse closes it's eye(s) so we need to fill those values since they are NaN
@@ -168,7 +182,7 @@ class PutativeSaccadesEnrichment(Enrichment):
         self._save_val("pose_missing", missing_data_mask, pynwb_obj)
         self._save_val("pose_reoriented", reoriented, pynwb_obj)
         self._save_val("pose_filtered", filtered, pynwb_obj)
-        self._save_val("saccades_putative_indices", saccade_indices, pynwb_obj)
+        self._save_val("saccades_putative_peak_indices", saccade_indices, pynwb_obj)
         self._save_val("saccades_putative_waveforms", saccade_waveforms, pynwb_obj)
         self._save_val("saccades_fps", [self.fps], pynwb_obj)
         self.logger.info("Done")

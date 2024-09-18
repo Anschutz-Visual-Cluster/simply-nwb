@@ -27,3 +27,8 @@ class ExampleEnrichment(Enrichment):
     def saved_keys() -> list[str]:
         return ["mykeyname"]
 
+    @staticmethod
+    def descriptions() -> dict[str, str]:
+        return {
+            "mykeyname": "test example key desc"
+        }

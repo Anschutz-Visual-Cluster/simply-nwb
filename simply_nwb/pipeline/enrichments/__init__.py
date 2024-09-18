@@ -67,6 +67,15 @@ class Enrichment(object):
         raise NotImplemented
 
     @staticmethod
+    def descriptions() -> dict[str, str]:
+        """
+        Get the descriptions for all keys
+
+        :returns: Return a dict of the names and descriptions for each saved key
+        """
+        raise NotImplemented
+
+    @staticmethod
     def get_name() -> str:
         """
         Unique CamelCase name for the enrichment
