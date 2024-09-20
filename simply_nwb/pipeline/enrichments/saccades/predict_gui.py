@@ -221,10 +221,22 @@ class PredictedSaccadeGUIEnrichment(PredictSaccadesEnrichment):
         print("Predicting epochs..")
         self._predict_saccade_epochs(pynwb_obj, pred_labels, pred_waveforms, pred_sacc_indices)
 
-        vals = {}
-        for ky in self.saved_keys():
-            vals[ky] = Enrichment.get_val(self.get_name(), ky, pynwb_obj)
-
+        # vals = {}
+        # for ky in self.saved_keys():
+        #     vals[ky] = Enrichment.get_val(self.get_name(), ky, pynwb_obj)
+        #
+        # import matplotlib.pyplot as plt
+        # [plt.plot(f) for f in vals["saccades_predicted_nasal_waveforms"][:, :, 0]]
+        # plt.title("Nasal")
+        # plt.show()
+        #
+        # [plt.plot(f) for f in vals["saccades_predicted_temporal_waveforms"][:, :, 0]]
+        # plt.title("Temporal")
+        # plt.show()
+        #
+        # [plt.plot(f) for f in vals["saccades_predicted_noise_waveforms"][:, :, 0]]
+        # plt.title("Noise")
+        # plt.show()
         tw = 2
 
     @staticmethod

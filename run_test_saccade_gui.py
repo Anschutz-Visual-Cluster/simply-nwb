@@ -60,15 +60,11 @@ def create_putative_nwb(dlc_filepath, timestamp_filepath):
 def graph_saccades(sess: NWBSession):
     print(sess.available_enrichments())
     print(sess.available_keys("PredictSaccades"))
-    waveforms = sess.pull("PredictSaccades.saccades_predicted_waveforms")  # Pull x and y saccade waveforms
-    xwaves = waveforms[:, :, 0]  # Dimensions are (saccade num, t, 2) where 2 is x/y
+    nasal = sess.pull("PredictSaccades.saccades_predicted_nasal_waveforms")[:, :, 0]
+    temporal = sess.pull("PredictSaccades.saccades_predicted_temporal_waveforms")[:, :, 0]
 
-    dirs = sess.pull("PredictSaccades.saccades_predicted_labels")
-    neg = np.where(dirs == -1.0)[0]
-    pos = np.where(dirs == 1.0)[0]
-
-    [plt.plot(d, color="blue") for d in xwaves[neg]]
-    [plt.plot(d, color="orange") for d in xwaves[pos]]
+    [plt.plot(d, color="blue") for d in nasal]
+    [plt.plot(d, color="orange") for d in temporal]
 
     plt.show()
     tw = 2
