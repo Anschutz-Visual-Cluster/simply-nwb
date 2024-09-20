@@ -1,3 +1,4 @@
+import math
 import os
 import pickle
 
@@ -7,6 +8,7 @@ from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 
 from simply_nwb.pipeline import Enrichment
 from simply_nwb.pipeline.enrichments.saccades import PredictSaccadesEnrichment, PutativeSaccadesEnrichment
+from simply_nwb.pipeline.util.saccade_gui.data_generator import DirectionDataGenerator, EpochDataGenerator
 from simply_nwb.pipeline.util.saccade_gui.direction import SaccadeDirectionLabelingGUI
 from simply_nwb.pipeline.util.saccade_gui.epochs import SaccadeEpochLabelingGUI
 from sklearn.multioutput import MultiOutputRegressor
@@ -47,7 +49,7 @@ class PredictedSaccadeGUIEnrichment(PredictSaccadesEnrichment):
     def _save_direction_prelabeled_data(self, x, y):
         fn = self._get_direction_prelabeled_data_name()
         with open(fn, "wb") as f:
-            print("Saving prelabeled direction data..")
+            print("Saving pre-labeled direction data..")
             pickle.dump((x, y), f)
 
     def _get_direction_prelabeled_data(self):
@@ -84,11 +86,29 @@ class PredictedSaccadeGUIEnrichment(PredictSaccadesEnrichment):
         self._save_direction_prelabeled_data(x, y)
         return x, y
 
+    def _get_epoch_prelabeled_data_name(self):
+        return "predict_gui_epoch_trainingdata.pickle"
+
+    def _save_epoch_prelabeled_data(self, x, y, z):
+        fn = self._get_epoch_prelabeled_data_name()
+        with open(fn, "wb") as f:
+            print("Saving pre-labeled epoch data..")
+            pickle.dump((x, y, z), f)
+
+    def _get_epoch_prelabeled_data(self):
+        fn = self._get_epoch_prelabeled_data_name()
+        if os.path.exists(fn):
+            print("Loading epoch labeled data..")
+            with open(fn, "rb") as f:
+                return pickle.load(f)
+        else:
+            print("No labeled data found for epoch model found..")
+            return False
+
     def _get_epoch_gui_traindata(self, pred_waveforms, pred_labels):
-        models = self._check_for_epoch_models()
-        if models:
-            print("Loading pretrained models for epochs..")
-            return [[0], [0], [0]]
+        result = self._get_epoch_prelabeled_data()
+        if result:
+            return result
 
         gui = SaccadeEpochLabelingGUI()
         nonzero_idxs = np.logical_not(pred_labels == 0)[:, 0]  # Dont label epochs of noise
@@ -98,16 +118,19 @@ class PredictedSaccadeGUIEnrichment(PredictSaccadesEnrichment):
 
         train_x, train_y, train_z = gui.trainingData
         train_y = train_y / self.recording_fps  # Divide by recording fps to get epochs in units of frames
+
+        self._save_epoch_prelabeled_data(train_x, train_y, train_z)
         return train_x, train_y, train_z
 
-    def _format_epoch_trainingdata(self, training_data, direction):
-        train_x, train_y, train_z = training_data
+    def _format_epoch_trainingdata(self, epoch_training_waveforms, epoch_training_epochs, direction):
+        # train_x, train_y, train_z = training_data
         # direction_idxs = np.where(train_z == direction)[0]
         # tx = train_x[direction_idxs]
         # ty = train_y[direction_idxs]
-        tx = train_x
-        ty = train_y
-        return tx, ty
+        # tx = train_x
+        # ty = train_y
+        # return tx, ty
+        return epoch_training_waveforms, epoch_training_epochs
 
     def _check_for_epoch_models(self):
         prefix = "predict_gui_"
@@ -129,7 +152,7 @@ class PredictedSaccadeGUIEnrichment(PredictSaccadesEnrichment):
                 break
         return found_models
 
-    def _get_epoch_models(self, training_data):
+    def _get_epoch_models(self, epoch_training_waveforms, epoch_training_epochs):
         prefix = "predict_gui_"
         filenames = [
             "temporal_epoch_regressor",  # temporal is -1
@@ -146,7 +169,7 @@ class PredictedSaccadeGUIEnrichment(PredictSaccadesEnrichment):
         # Didn't find models, need to train ourselves
         models = []
         for direc in [-1, 1]:
-            tx, ty = self._format_epoch_trainingdata(training_data, direc)
+            tx, ty = self._format_epoch_trainingdata(epoch_training_waveforms, epoch_training_epochs, direc)
             if len(ty) == 0:
                 raise ValueError(f"Can't train model with direction = {direc} no epoch training data!")
 
@@ -167,19 +190,28 @@ class PredictedSaccadeGUIEnrichment(PredictSaccadesEnrichment):
         print("MAKE SURE YOU LABEL AT LEAST 5 EPOCHS!!")
         print("="*50)
 
-        print("Collecting directional training data..")
-        pred_waveforms, pred_labels = self._get_direction_gui_traindata()
-        print("Training model..")
-        direction_model = PredictedSaccadeGUIEnrichment.get_pretrained_direction_model(pred_waveforms, pred_labels)
-        self._direction_cls = direction_model
-        print("Predicting directions..")
-        self._predict_saccade_direction(pynwb_obj)
+        if not PredictedSaccadeGUIEnrichment._check_for_pretained_direction_model():
+            print("Collecting directional training data..")
+            direction_userlabeled_waveforms, direction_userlabeled_labels = self._get_direction_gui_traindata()
+            print("Generating more training data..")
+            direction_training_waveforms, direction_training_labels = DirectionDataGenerator(direction_userlabeled_waveforms, direction_userlabeled_labels).generate()
 
-        # Epoch model training
-        print("Collecting directional training data..")
-        epoch_training_data = self._get_epoch_gui_traindata(pred_waveforms, pred_labels)
-        print("Training models..")
-        epoch_models = self._get_epoch_models(epoch_training_data)
+            print("Training model..")
+            self._direction_cls = self.get_pretrained_direction_model(direction_training_waveforms, direction_training_labels)
+        else:
+            self._direction_cls = self.load_pretrained_direction_model()
+
+        print("Predicting directions..")
+        pred_labels, pred_waveforms, pred_sacc_indices = self._predict_saccade_direction(pynwb_obj)
+
+        epoch_models = self._check_for_epoch_models()
+        if not epoch_models:
+            # Epoch model training
+            print("Collecting directional training data..")
+            epoch_userlabeled_waveforms, epoch_userlabeled_epochs, ignorezvalfornow = self._get_epoch_gui_traindata(direction_userlabeled_waveforms, direction_userlabeled_labels)
+            epoch_training_waveforms, epoch_training_epochs = EpochDataGenerator(epoch_userlabeled_waveforms, epoch_userlabeled_epochs).generate()
+            print("Training models..")
+            epoch_models = self._get_epoch_models(epoch_training_waveforms, epoch_training_epochs)
 
         self._temporal_epoch_regressor = epoch_models[0]
         self._temporal_epoch_transformer = epoch_models[1]
@@ -187,7 +219,13 @@ class PredictedSaccadeGUIEnrichment(PredictSaccadesEnrichment):
         self._nasal_epoch_transformer = epoch_models[3]
 
         print("Predicting epochs..")
-        self._predict_saccade_epochs(pynwb_obj, pred_labels, pred_waveforms)
+        self._predict_saccade_epochs(pynwb_obj, pred_labels, pred_waveforms, pred_sacc_indices)
+
+        vals = {}
+        for ky in self.saved_keys():
+            vals[ky] = Enrichment.get_val(self.get_name(), ky, pynwb_obj)
+
+        tw = 2
 
     @staticmethod
     def _check_for_pretained_direction_model():
@@ -195,12 +233,19 @@ class PredictedSaccadeGUIEnrichment(PredictSaccadesEnrichment):
         return os.path.exists(fn)
 
     @staticmethod
-    def get_pretrained_direction_model(wv, y_vals):
+    def load_pretrained_direction_model():
         fn = "predict_gui_directional_model.pickle"
         if PredictedSaccadeGUIEnrichment._check_for_pretained_direction_model():
             print(f"Pretrained data found at '{fn}' using that..")
             with open(fn, "rb") as fp:
                 return pickle.load(fp)
+        return False
+    @staticmethod
+    def get_pretrained_direction_model(wv, y_vals):
+        load_model = PredictedSaccadeGUIEnrichment.load_pretrained_direction_model()
+        if load_model:
+            return load_model
+        print("No pretrained model found for direction, training..")
 
         tmp_wv = np.broadcast_to(wv[:, :, None], shape=(*wv.shape, 2))
         x_velocities, idxs = PredictSaccadesEnrichment.preformat_waveforms(tmp_wv)
@@ -228,7 +273,7 @@ class PredictedSaccadeGUIEnrichment(PredictSaccadesEnrichment):
 
         # Smaller grid for faster (but worse) training, used for testing
         if "NWB_DEBUG" in os.environ and os.environ["NWB_DEBUG"] == "True":
-            hidden_layer_sizes = [(4,)]
+            hidden_layer_sizes = [(5,)]
             grid = {
                 'estimator__hidden_layer_sizes': hidden_layer_sizes,
                 'estimator__max_iter': [
@@ -241,14 +286,16 @@ class PredictedSaccadeGUIEnrichment(PredictSaccadesEnrichment):
             }
         else:
             # Regressor
-            hidden_layer_sizes = [(int(n),) for n in np.arange(2, num_features, 1)]
+            hidden_layer_sizes = [(int(math.pow(2, v)),) for v in range(3, 6)]  # Try layer sizes 8,16,32
+            # 1 2 4 8 16 32 64 128
+            # 0 1 2 3  4  5  6  7
             grid = {
                 'estimator__hidden_layer_sizes': hidden_layer_sizes,
                 'estimator__max_iter': [
                     1000000,
                 ],
                 'estimator__activation': ['tanh', 'relu'],
-                'estimator__solver': ['sgd', 'adam'],
+                'estimator__solver': ['adam'],
                 'estimator__alpha': [0.0001, 0.05],
                 'estimator__learning_rate': ['constant', 'adaptive'],
             }

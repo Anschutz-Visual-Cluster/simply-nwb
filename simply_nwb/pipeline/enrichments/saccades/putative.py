@@ -11,6 +11,7 @@ from sklearn.impute import SimpleImputer
 from simply_nwb import SimpleNWB
 from simply_nwb.pipeline import Enrichment
 from simply_nwb.pipeline.util import interpolate_flat_arr, smooth_flat_arr
+from simply_nwb.pipeline.util.saccade_gui.consts import PERISACCADIC_WINDOW_IN_SECONDS
 from simply_nwb.pipeline.value_mapping import NWBValueMapping
 from simply_nwb.transforms import csv_load_dataframe_str
 
@@ -315,7 +316,7 @@ class PutativeSaccadesEnrichment(Enrichment):
     def _detect_putative_saccades(self, filtered):
         amplitude_threshold = 0.99
         min_inter_peak_interval = 0.075
-        perisacc_window = (-0.2, 0.2)
+        perisacc_window = PERISACCADIC_WINDOW_IN_SECONDS
         center_sacc_waveforms = False
         smoothing_window_size = 0.025
 
@@ -365,7 +366,7 @@ class PutativeSaccadesEnrichment(Enrichment):
             start_idx = peak_idx + peak_offsets[0]
             stop_idx = peak_idx + peak_offsets[1]
 
-            saccade_waveform = filtered[start_idx: stop_idx, :]
+            saccade_waveform = filtered[start_idx:stop_idx, :]
             if saccade_waveform.shape[0] != num_features:  # Exclude incomplete waveforms
                 continue
 

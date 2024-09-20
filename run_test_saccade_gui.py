@@ -101,7 +101,7 @@ def main():
     # so you would use {"x_center": "a_x", ..}
     # Normally for list_of_putative_nwbs_filenames you would want more than one session, this is where the training data
     # will be sampled from
-    enrich = PredictedSaccadeGUIEnrichment(200, ["putative.nwb"], 20, putative_kwargs={})
+    enrich = PredictedSaccadeGUIEnrichment(200, ["putative.nwb", "putative.nwb"], 20, putative_kwargs={})
     # This will open two guis, where you will identify which direction the saccade is, and what the start and stop is
     # when the gui data entry is done, it will begin training the classifier models. The models are saved so if
     # something breaks it can be re-started easily
