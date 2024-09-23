@@ -254,6 +254,7 @@ class PredictedSaccadeGUIEnrichment(PredictSaccadesEnrichment):
         return False
     @staticmethod
     def get_pretrained_direction_model(wv, y_vals):
+        fn = "predict_gui_directional_model.pickle"
         load_model = PredictedSaccadeGUIEnrichment.load_pretrained_direction_model()
         if load_model:
             return load_model
