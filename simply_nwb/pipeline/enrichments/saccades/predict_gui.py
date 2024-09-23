@@ -8,6 +8,7 @@ from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 
 from simply_nwb.pipeline import Enrichment
 from simply_nwb.pipeline.enrichments.saccades import PredictSaccadesEnrichment, PutativeSaccadesEnrichment
+from simply_nwb.pipeline.util.saccade_gui.classifiers import DirectionalClassifier
 from simply_nwb.pipeline.util.saccade_gui.data_generator import DirectionDataGenerator, EpochDataGenerator
 from simply_nwb.pipeline.util.saccade_gui.direction import SaccadeDirectionLabelingGUI
 from simply_nwb.pipeline.util.saccade_gui.epochs import SaccadeEpochLabelingGUI
@@ -252,26 +253,28 @@ class PredictedSaccadeGUIEnrichment(PredictSaccadesEnrichment):
             with open(fn, "rb") as fp:
                 return pickle.load(fp)
         return False
+
     @staticmethod
     def get_pretrained_direction_model(wv, y_vals):
-        fn = "predict_gui_directional_model.pickle"
-        load_model = PredictedSaccadeGUIEnrichment.load_pretrained_direction_model()
-        if load_model:
-            return load_model
-        print("No pretrained model found for direction, training..")
+        # load_model = PredictedSaccadeGUIEnrichment.load_pretrained_direction_model()
+        # if load_model:
+        #     return load_model
+        # print("No pretrained model found for direction, training..")
+        # TODO do we want to use LDA?
+        # tmp_wv = np.broadcast_to(wv[:, :, None], shape=(*wv.shape, 2))
+        # x_velocities, idxs = PredictSaccadesEnrichment.preformat_waveforms(tmp_wv)
+        # x_velocities = np.array(x_velocities)
+        # non_nan_yvals = np.array(y_vals)[idxs]
+        #
+        # lda = LinearDiscriminantAnalysis()
+        # lda.fit(x_velocities, non_nan_yvals)
+        #
+        # fn = "predict_gui_directional_model.pickle"
+        # with open(fn, "wb") as fp:
+        #     pickle.dump(lda, fp)
+        # return lda
 
-        tmp_wv = np.broadcast_to(wv[:, :, None], shape=(*wv.shape, 2))
-        x_velocities, idxs = PredictSaccadesEnrichment.preformat_waveforms(tmp_wv)
-        x_velocities = np.array(x_velocities)
-        non_nan_yvals = np.array(y_vals)[idxs]
-
-        lda = LinearDiscriminantAnalysis()
-        lda.fit(x_velocities, non_nan_yvals)
-
-        with open(fn, "wb") as fp:
-            pickle.dump(lda, fp)
-
-        return lda
+        return DirectionalClassifier()
 
     @staticmethod
     def get_pretrained_epoch_models(wv, epoch_labels):

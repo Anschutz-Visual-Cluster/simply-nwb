@@ -110,9 +110,10 @@ class PredictSaccadesEnrichment(Enrichment):
         indices = indices[idxs]
 
         # Predict -1, 0, or 1
-        pred_labels = self._direction_cls.predict(x_velocities)
+        # pred_labels = self._direction_cls.predict(x_velocities)
+        pred_labels = self._direction_cls.predict(waveforms[:, :, 0])  # TODO use velocities instead?
 
-        self._save_val("saccades_predicted_startstop_indices", indices, pynwb_obj)
+        self._save_val("saccades_predicted_peak_indices", indices, pynwb_obj)
         # self._save_val("saccades_predicted_labels", pred_labels, pynwb_obj)
         # import matplotlib.pyplot as plt
         # wvs = waveforms[:, :, 0]
