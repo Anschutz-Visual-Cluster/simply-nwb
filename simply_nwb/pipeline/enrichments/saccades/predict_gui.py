@@ -260,7 +260,7 @@ class PredictedSaccadeGUIEnrichment(PredictSaccadesEnrichment):
         # if load_model:
         #     return load_model
         # print("No pretrained model found for direction, training..")
-        # TODO do we want to use LDA?
+        # # TODO do we want to use LDA?
         # tmp_wv = np.broadcast_to(wv[:, :, None], shape=(*wv.shape, 2))
         # x_velocities, idxs = PredictSaccadesEnrichment.preformat_waveforms(tmp_wv)
         # x_velocities = np.array(x_velocities)

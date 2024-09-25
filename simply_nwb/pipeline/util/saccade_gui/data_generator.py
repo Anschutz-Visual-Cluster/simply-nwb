@@ -22,8 +22,10 @@ def noise_waveforms(orig_wvs):
         noise_wvs[idx] += np.random.normal(0, stds[idx] / 2, size=noise_wvs.shape[1])
     return noise_wvs
 
+
 def scale_waveforms(orig_wvs, scale_factor):
     return np.copy(orig_wvs) * scale_factor
+
 
 class DirectionDataGenerator(object):
 
@@ -95,12 +97,15 @@ class DirectionDataGenerator(object):
 
         # import matplotlib.pyplot as plt
         # [plt.plot(f) for f in wvs[preds[:, 0] == 1]]
+        # plt.title("preds == 1")
         # plt.show()
         # [plt.plot(f) for f in wvs[preds[:, 0] == -1]]
+        # plt.title("preds == -1")
         # plt.show()
         # [plt.plot(f) for f in wvs[preds[:, 0] == 0]]
+        # plt.title("preds == 0")
         # plt.show()
-        # #
+        #
         # distrib = np.mean(wvs[preds[:, 0] == 1][:, :30], axis=1)
         # plt.hist(distrib, bins=100)
         # plt.show()

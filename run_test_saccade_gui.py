@@ -63,14 +63,19 @@ def graph_saccades(sess: NWBSession):
     nasal = sess.pull("PredictSaccades.saccades_predicted_nasal_waveforms")[:, :, 0]
     temporal = sess.pull("PredictSaccades.saccades_predicted_temporal_waveforms")[:, :, 0]
 
-    [plt.plot(d, color="blue") for d in nasal]
     [plt.plot(d, color="orange") for d in temporal]
+    [plt.plot(d, color="blue") for d in nasal]
 
     plt.show()
     tw = 2
 
 
 def main():
+    sess = NWBSession("D:\\spencer_data\\predictive_nwbs\\predictive-20231103_unitME_session001-nwb-4-24_13-28-6_putative.nwb")
+    graph_saccades(sess)
+
+
+def smain():
     ###
     os.environ["NWB_DEBUG"] = "True"  # NOTE ONLY USE TO QUICKLY TRAIN A MODEL (not for real data)
     ####
@@ -97,7 +102,11 @@ def main():
     # so you would use {"x_center": "a_x", ..}
     # Normally for list_of_putative_nwbs_filenames you would want more than one session, this is where the training data
     # will be sampled from
-    enrich = PredictedSaccadeGUIEnrichment(200, ["putative.nwb", "putative.nwb"], 20, putative_kwargs={})
+    fn = "D:\\spencer_data\\putative_nwbs"
+    l = os.listdir(fn)
+    putats = [os.path.join(fn, v) for v in l[:5]]
+    enrich = PredictedSaccadeGUIEnrichment(200, putats, 20, putative_kwargs={})
+    # enrich = PredictedSaccadeGUIEnrichment(200, ["putative.nwb", "putative.nwb"], 20, putative_kwargs={})
     # This will open two guis, where you will identify which direction the saccade is, and what the start and stop is
     # when the gui data entry is done, it will begin training the classifier models. The models are saved so if
     # something breaks it can be re-started easily
@@ -117,4 +126,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    smain()
