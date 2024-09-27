@@ -32,21 +32,27 @@ class PredictSaccadesEnrichment(Enrichment):
     @staticmethod
     def saved_keys() -> list[str]:
         return [
+            "saccades_fps",  # [number]
             "saccades_predicted_nasal_epochs",  # (saccade_num, (start,end))
             "saccades_predicted_temporal_epochs",  # same as above
             "saccades_predicted_nasal_waveforms",  # (saccade_num, waveform_time, (x,y))
             "saccades_predicted_temporal_waveforms",  # same as above
-            "saccades_predicted_noise_waveforms"  # Noise waveforms (saccadenum, waveform_time, (x,y))
+            "saccades_predicted_noise_waveforms",  # Noise waveforms (saccadenum, waveform_time, (x,y))
+            "saccades_predicted_temporal_peak_indices",  # Peaks (centers) of each, in indexes (saccadenum,)
+            "saccades_predicted_nasal_peak_indices",  # same as above
         ]
 
     @staticmethod
     def descriptions() -> dict[str, str]:
         return {
-            "saccades_predicted_nasal_epochs": "Start and end of the nasal saccades (saccadenum, start/end)",
-            "saccades_predicted_temporal_epochs": "Start and end of the temporal saccades (saccadenum, start/end)",
-            "saccades_predicted_nasal_waveforms": "Waveforms for only nasal saccades (saccadenum, time, x/y)",
-            "saccades_predicted_temporal_waveforms": "Waveforms for only temporal saccades (saccadenum, time, x/y)",
-            "saccades_predicted_noise_waveforms": "Waveforms for only noise labeled data (saccadenum, time, x/y)"
+            "saccades_fps": "fps of the video, form is [fps]",
+            "saccades_predicted_nasal_epochs": "Start and end of the nasal saccades (saccadenum, start/end) in absolute frames",
+            "saccades_predicted_temporal_epochs": "Start and end of the temporal saccades (saccadenum, start/end) in absolute frames",
+            "saccades_predicted_noise_waveforms": "Noise waveforms (saccadenum, time, x/y)",
+            "saccades_predicted_nasal_waveforms": "Waveforms for only nasal saccades (saccadenum, time, x/y) in pixels",
+            "saccades_predicted_temporal_waveforms": "Waveforms for only temporal saccades (saccadenum, time, x/y) in pixels",
+            "saccades_predicted_temporal_peak_indices": "Indexes of peaks for temporal labeled waveforms (saccadenum,) absolute frames",  # same as above
+            "saccades_predicted_nasal_peak_indices": "Indexes of peaks for nasal labeled waveforms (saccadenum,) absolute frames",  # same as above
         }
 
     @staticmethod
@@ -113,21 +119,6 @@ class PredictSaccadesEnrichment(Enrichment):
         # pred_labels = self._direction_cls.predict(x_velocities)
         pred_labels = self._direction_cls.predict(waveforms[:, :, 0])  # TODO use velocities instead?
 
-        self._save_val("saccades_predicted_peak_indices", indices, pynwb_obj)
-        # self._save_val("saccades_predicted_labels", pred_labels, pynwb_obj)
-        # import matplotlib.pyplot as plt
-        # wvs = waveforms[:, :, 0]
-        # preds = pred_labels
-        # [plt.plot(f) for f in wvs[preds == 1]]
-        # plt.title("dir = 1")
-        # plt.show()
-        # [plt.plot(f) for f in wvs[preds == -1]]
-        # plt.title("dir = -1")
-        # plt.show()
-        # [plt.plot(f) for f in wvs[preds == 0]]
-        # plt.title("dir = 0")
-        # plt.show()
-
         return pred_labels, waveforms, indices
 
     def _predict_saccade_epochs(self, pynwb_obj, pred_labels, pred_waveforms, pred_sacc_indices):
@@ -161,4 +152,5 @@ class PredictSaccadesEnrichment(Enrichment):
 
             self._save_val(f"saccades_predicted_{name}_waveforms", pred_waveforms[dir_idxs][nonnan_idxs], pynwb_obj)
             self._save_val(f"saccades_predicted_{name}_epochs", up_pred, pynwb_obj)
+            self._save_val(f"saccades_predicted_{name}_peak_indices", pred_sacc_indices[dir_idxs], pynwb_obj)
 

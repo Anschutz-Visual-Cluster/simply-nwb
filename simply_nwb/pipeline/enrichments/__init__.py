@@ -20,9 +20,25 @@ class Enrichment(object):
                 raise e
                 # raise ValueError(f"Unable to find required key '{k}' for enrichment '{enrichment_name}' Error: '{str(e)}'")
 
+    def post_validate(self, pynwb_obj):
+        # validate that all the keys we said were saved, are saved, and no others
+        enrichment_name = self.get_name()
+        module = pynwb_obj.processing[f"Enrichment.{enrichment_name}"]
+        available_keys = self.saved_keys()
+        desc_keys = self.descriptions()
+
+        keys = list(module.containers.keys())
+        for key in keys:
+            if key not in available_keys:
+                raise ValueError(f"Key '{key}' found, but not defined in enrichment! Defined '{list(available_keys)}' In NWB '{list(keys)}'")
+            if key not in desc_keys:
+                raise ValueError(f"Key '{key}' not found in descriptions! Defined '{desc_keys}'")
+
     def run(self, pynwb_obj):
         self.validate(pynwb_obj)
-        return self._run(pynwb_obj)
+        val = self._run(pynwb_obj)
+        self.post_validate(pynwb_obj)
+        return val
 
     def _save_val(self, key: str, value: Any, nwb: NWBFile):
         """

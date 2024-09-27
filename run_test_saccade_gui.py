@@ -67,6 +67,17 @@ def graph_saccades(sess: NWBSession):
     [plt.plot(d, color="blue") for d in nasal]
 
     plt.show()
+
+    epochs_nasal = sess.pull("PredictSaccades.saccades_predicted_nasal_epochs")
+    nasal_peaks = sess.pull("PredictSaccades.saccades_predicted_nasal_peak_indices")
+
+    startstop_idxs = ((epochs_nasal - nasal_peaks[:, None]) + 40)
+    for i in range(10):
+        plt.plot(nasal[i])
+        plt.vlines(startstop_idxs[i, 0], np.min(nasal[i]), np.max(nasal[i]))
+        plt.vlines(startstop_idxs[i, 1], np.min(nasal[i]), np.max(nasal[i]))
+    plt.show()
+
     tw = 2
 
 
@@ -102,11 +113,14 @@ def smain():
     # so you would use {"x_center": "a_x", ..}
     # Normally for list_of_putative_nwbs_filenames you would want more than one session, this is where the training data
     # will be sampled from
-    fn = "D:\\spencer_data\\putative_nwbs"
-    l = os.listdir(fn)
-    putats = [os.path.join(fn, v) for v in l[:5]]
-    enrich = PredictedSaccadeGUIEnrichment(200, putats, 20, putative_kwargs={})
-    # enrich = PredictedSaccadeGUIEnrichment(200, ["putative.nwb", "putative.nwb"], 20, putative_kwargs={})
+
+    # fn = "D:\\spencer_data\\putative_nwbs"
+    # l = os.listdir(fn)
+    # putats = [os.path.join(fn, v) for v in l[:5]]
+    # enrich = PredictedSaccadeGUIEnrichment(200, putats, 20, putative_kwargs={})
+
+    enrich = PredictedSaccadeGUIEnrichment(200, ["putative.nwb", "putative.nwb"], 20, putative_kwargs={})
+
     # This will open two guis, where you will identify which direction the saccade is, and what the start and stop is
     # when the gui data entry is done, it will begin training the classifier models. The models are saved so if
     # something breaks it can be re-started easily
