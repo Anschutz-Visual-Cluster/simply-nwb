@@ -1,11 +1,23 @@
 import os
+import platform
 import subprocess
+
+
+def run_make(cmd):
+    if platform.system().startswith("Windows"):
+        subprocess.run(["make.bat", cmd])
+    else:
+        try:
+            subprocess.run(["make", cmd])
+        except Exception as e:
+            print("Error running make, is it installed? apt-get install make")
+            raise e
 
 
 def main():
     os.chdir("docs")
 
-    subprocess.run(["make.bat", "clean"])
+    run_make("clean")
 
     print("Generating API docs..")
     subprocess.run(["sphinx-apidoc", "-o", "source",  "../simply_nwb", "-f"])
@@ -15,11 +27,8 @@ def main():
     subprocess.run(["sphinx-build",  "-b", "html", "source", "build"])
 
     print("Making HTML docs..")
-    # TODO Might need a different command on Linux/Mac, try uncommenting below line and commenting
-    #  out the 'make.bat' line
 
-    # subprocess.run(["make", "html"])
-    subprocess.run(["make.bat", "html"])
+    run_make("html")
 
     print("Done!")
 
