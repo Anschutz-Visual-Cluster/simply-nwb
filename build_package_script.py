@@ -1,6 +1,7 @@
 from setuptools import sandbox
 # On linux you might need to do sudo apt-get install python3-setuptools
 
+
 def main():
     # Call setup.py from python
     sandbox.run_setup('setup.py', [
