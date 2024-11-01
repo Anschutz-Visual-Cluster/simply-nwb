@@ -32,3 +32,14 @@ class ExampleEnrichment(Enrichment):
         return {
             "mykeyname": "test example key desc"
         }
+
+    @staticmethod
+    def func_list() -> list:
+        return [
+            "test"  # Form of functions should be f(nwbobj, args, kwargs) -> Any
+        ]
+
+    @staticmethod
+    def test(pynwb_obj, args, kwargs):
+        # Called by NWBSession(..).func("ExampleEnrichment.test", args, kwargs)
+        print(f"test func being called with obj {pynwb_obj} args {args} kwargs {kwargs}")

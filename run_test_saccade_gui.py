@@ -101,6 +101,10 @@ def smain():
 
     sess = NWBSession("putative.nwb")  # Load in the session we would like to enrich to predictive saccades
 
+    print(f"Available funcs from PutativeSaccades: {sess.get_funclist('PutativeSaccades')}")
+    dropped = sess.func("PutativeSaccades.dropped_frames")("rightCamTimestamps")
+    print(f"Dropped frames: {dropped}")
+
     # Take our putative saccades and do the actual prediction for the start, end time, and time location
     print("Adding predictive data..")
 
