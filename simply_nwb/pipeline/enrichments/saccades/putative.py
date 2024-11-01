@@ -387,6 +387,10 @@ class PutativeSaccadesEnrichment(Enrichment):
 
     @staticmethod
     def dropped_frames(pynwb_obj, timestamp_name):
+        # Code adapted from
+        # https://github.com/jbhunt/myphdlib/blob/25c731841785cac530550db89eec87057a4f78a9/myphdlib/pipeline/saccades.py#L114
+        # https://github.com/jbhunt/myphdlib/blob/25c731841785cac530550db89eec87057a4f78a9/myphdlib/pipeline/events.py#L387
+        # https://github.com/jbhunt/myphdlib/blob/25c731841785cac530550db89eec87057a4f78a9/myphdlib/general/saccade.py#L100
         # TODO save args for the class as metadata so we dont have to pass in the timestamp_name
         timestamps = pynwb_obj.stimulus[timestamp_name].data[:]
         fps = Enrichment.get_val(PutativeSaccadesEnrichment.get_name(), "saccades_fps", pynwb_obj)[0]
