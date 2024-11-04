@@ -148,13 +148,14 @@ def main(dlc_filepath, timestamp_filepath, drifting_grating_filepath):
     sess.enrich(predict_enrich)
     print("Saving predicted..")
     sess.save("predicted.nwb")  # Save as our finalized session, ready for analysis
+    #
+    # print("Adding drifting grating data..")
+    # drift_enrich = DriftingGratingEnrichment(drifting_grating_filepath)
+    # sess.enrich(drift_enrich)
+    # sess.save("drifting.nwb")
 
-    print("Adding drifting grating data..")
-    drift_enrich = DriftingGratingEnrichment(drifting_grating_filepath)
-    sess.enrich(drift_enrich)
-    sess.save("drifting.nwb")
 
-    # graph_saccades(sess)
+    graph_saccades(sess)
     tw = 2
 
 
