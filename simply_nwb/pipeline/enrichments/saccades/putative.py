@@ -37,7 +37,7 @@ class PutativeSaccadesEnrichment(Enrichment):
             "y": [lambda x: x.processing, stim_name, y_center, lambda y: y.data[:]],
             "likelihood": [lambda x: x.processing, stim_name, likelihood, lambda y: y.data[:]],
             "timestamps": [lambda x: x.stimulus, timestamp_name, lambda y: y.data[:]]
-        }))
+        }))  # TODO save the args as metadata
 
         self._stim_name = stim_name
         self.likelihood_threshold = likelihood_threshold
@@ -381,3 +381,26 @@ class PutativeSaccadesEnrichment(Enrichment):
 
         return saccade_waveforms, saccade_indicies
 
+    @staticmethod
+    def func_list() -> list[str]:
+        return ["dropped_frames"]
+
+    @staticmethod
+    def dropped_frames(pynwb_obj, timestamp_name):
+        # Code adapted from
+        # https://github.com/jbhunt/myphdlib/blob/25c731841785cac530550db89eec87057a4f78a9/myphdlib/pipeline/saccades.py#L114
+        # https://github.com/jbhunt/myphdlib/blob/25c731841785cac530550db89eec87057a4f78a9/myphdlib/pipeline/events.py#L387
+        # https://github.com/jbhunt/myphdlib/blob/25c731841785cac530550db89eec87057a4f78a9/myphdlib/general/saccade.py#L100
+        # TODO save args for the class as metadata so we dont have to pass in the timestamp_name
+        timestamps = pynwb_obj.stimulus[timestamp_name].data[:]
+        fps = Enrichment.get_val(PutativeSaccadesEnrichment.get_name(), "saccades_fps", pynwb_obj)[0]
+
+        timestamps_in_ms = np.array(timestamps)/1000000
+        fps_in_ms = 1/fps*1000
+        fps_timestamp_ratio = timestamps_in_ms / fps_in_ms
+
+        excess_frames = np.round(fps_timestamp_ratio) - 1  # Frame diffs larger than 1 will be nonzero
+        # Any nonzero excess frame indicates a dropped frame
+        dropped_count = len(np.where(excess_frames != 0)[0])
+
+        return dropped_count

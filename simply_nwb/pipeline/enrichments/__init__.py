@@ -1,5 +1,5 @@
 import logging
-from typing import Any
+from typing import Any, Callable
 from pynwb import NWBFile, TimeSeries
 
 from simply_nwb import SimpleNWB
@@ -17,8 +17,8 @@ class Enrichment(object):
             try:
                 self._get_req_val(k, pynwb_obj)
             except Exception as e:
+                print(f"Unable to find required key '{k}' for enrichment '{enrichment_name}' Error: '{str(e)}'")
                 raise e
-                # raise ValueError(f"Unable to find required key '{k}' for enrichment '{enrichment_name}' Error: '{str(e)}'")
 
     def post_validate(self, pynwb_obj):
         # validate that all the keys we said were saved, are saved, and no others
@@ -97,6 +97,15 @@ class Enrichment(object):
         Unique CamelCase name for the enrichment
         """
         raise NotImplemented
+
+    @staticmethod
+    def func_list() -> list[str]:
+        """
+        Form of functions should be f(nwbobj, args, kwargs) -> Any
+        list of string names of the functions, like
+        ["test", "asdf", ..]
+        """
+        return []
 
     def _run(self, pynwb_obj):
         """

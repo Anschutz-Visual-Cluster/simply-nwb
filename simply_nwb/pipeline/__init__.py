@@ -1,5 +1,6 @@
+import functools
 import logging
-from typing import Optional, Any
+from typing import Optional, Any, Callable
 
 import pynwb
 from pynwb import NWBHDF5IO
@@ -76,13 +77,10 @@ class NWBSession(object):
         self._check_enrichment_name(namespace)
         return self.__builtin_enrichments[namespace].descriptions()
 
-    def _split_namespace_str(self, namespaced_key: str) -> [str, str]:
+    def _parse_namespaced_key(self,  namespaced_key: str) -> (str, str):
         namespace = namespaced_key.split(".")[0]  # namespace, eg 'ExampleEnrichment' from 'ExampleEnrichment.myvar'
         key = ".".join(namespaced_key.split(".")[1:])  # The rest, 'myvar'
-
-        if namespace not in self.__enrichments:
-            raise ValueError(f"Enrichment '{namespace}' not found in this NWBSession! Found enrichments '{str(list(self.__enrichments))}'")
-
+        self._check_enrichment_name(namespace)
         return namespace, key
 
     def pull(self, namespaced_key: str) -> Any:
@@ -91,10 +89,22 @@ class NWBSession(object):
 
         :param namespaced_key: Key for the value to retrieve, namespaced. ie ExampleEnrichment.myvar
         """
-
-        namespace, key = self._split_namespace_str(namespaced_key)
+        namespace, key = self._parse_namespaced_key(namespaced_key)
         val = self.__builtin_enrichments[namespace].get_val(namespace, key, self.nwb)
         return val
+
+    def get_funclist(self, namespace: str) -> list[str]:
+        self._check_enrichment_name(namespace)
+        return self.__builtin_enrichments[namespace].func_list()
+
+    def func(self, namespaced_key: str) -> Callable:
+        namespace, key = self._parse_namespaced_key(namespaced_key)
+        funcs = self.__builtin_enrichments[namespace].func_list()
+        if key not in funcs:
+            raise ValueError(f"Function '{key}' not found in Enrichment '{namespace}' Available functions '{funcs}'")
+        myfunc = getattr(self.__builtin_enrichments[namespace], key)
+        newfunc = functools.partial(myfunc, self.nwb)
+        return newfunc
 
     def save(self, filename):
         v = self.nwb
