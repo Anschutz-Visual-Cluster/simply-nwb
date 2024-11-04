@@ -2,6 +2,8 @@ from simply_nwb.pipeline import Enrichment, NWBValueMapping
 
 """
 Use me as a starter point to make your own enrichment
+If you have a folder of enrichments, ie 'saccades/' make sure you import each one in the __init__.py
+see simply_nwb.pipeline.enrichments.saccades.__init__.py
 """
 
 

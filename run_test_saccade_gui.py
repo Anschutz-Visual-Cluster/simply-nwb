@@ -7,6 +7,7 @@ from pynwb.file import Subject
 from simply_nwb import SimpleNWB
 from simply_nwb.pipeline import NWBSession
 from simply_nwb.pipeline.enrichments.saccades import PutativeSaccadesEnrichment
+from simply_nwb.pipeline.enrichments.saccades.drifting_grating import DriftingGratingEnrichment
 from simply_nwb.pipeline.enrichments.saccades.predict_gui import PredictedSaccadeGUIEnrichment
 import matplotlib.pyplot as plt
 
@@ -81,20 +82,30 @@ def graph_saccades(sess: NWBSession):
     tw = 2
 
 
-def main():
-    sess = NWBSession("D:\\spencer_data\\predictive_nwbs\\predictive-20231103_unitME_session001-nwb-4-24_13-28-6_putative.nwb")
-    graph_saccades(sess)
+def drifting_grating_enrichment_testing():
+    print("Testing enrichment 'DriftingGrating'")
+
+    enrich = DriftingGratingEnrichment("data/driftingGratingMetadata-0.txt")
+    sess = NWBSession(create_nwb())
+    sess.enrich(enrich)
+
+    print("Description dict:")
+    print(sess.description("DriftingGrating"))
+    print("Available keys:")
+    print(sess.available_keys("DriftingGrating"))
+    # The long name still works
+    eventdata = sess.pull("DriftingGrating.Event (1=Grating, 2=Motion, 3=Probe, 4=ITI)")
+    timestamps = sess.pull("DriftingGrating.Timestamp")
+    # eventdata and timestamps align
 
 
-def smain():
+    tw = 2
+
+
+def main(dlc_filepath, timestamp_filepath, drifting_grating_filepath):
     ###
     os.environ["NWB_DEBUG"] = "True"  # NOTE ONLY USE TO QUICKLY TRAIN A MODEL (not for real data)
     ####
-
-    # Get the filenames for the timestamps.txt and dlc CSV
-    prefix = "data"
-    dlc_filepath = os.path.abspath(os.path.join(prefix, "20240410_unitME_session001_rightCam-0000DLC_resnet50_GazerMay24shuffle1_1030000.csv"))
-    timestamp_filepath = os.path.abspath(os.path.join(prefix, "20240410_unitME_session001_rightCam_timestamps.txt"))
 
     if not os.path.exists("putative.nwb"):
         create_putative_nwb(dlc_filepath, timestamp_filepath)
@@ -119,7 +130,7 @@ def smain():
     # putats = [os.path.join(fn, v) for v in l[:5]]
     # enrich = PredictedSaccadeGUIEnrichment(200, putats, 20, putative_kwargs={})
 
-    enrich = PredictedSaccadeGUIEnrichment(200, ["putative.nwb", "putative.nwb"], 20, putative_kwargs={})
+    predict_enrich = PredictedSaccadeGUIEnrichment(200, ["putative.nwb", "putative.nwb"], 20, putative_kwargs={})
 
     # This will open two guis, where you will identify which direction the saccade is, and what the start and stop is
     # when the gui data entry is done, it will begin training the classifier models. The models are saved so if
@@ -130,14 +141,27 @@ def smain():
     # and at least 10 epochs
     # To label direction, click the radio button (circle button) on the left and then click next
     # To label epoch timing, select start/stop and move the line with the arrow keys to the approximate start/stop of the saccade
-
-    sess.enrich(enrich)
-    print("Saving to NWB")
+    sess.enrich(predict_enrich)
+    print("Saving predicted..")
     sess.save("predicted.nwb")  # Save as our finalized session, ready for analysis
 
-    graph_saccades(sess)
+    print("Adding drifting grating data..")
+    drift_enrich = DriftingGratingEnrichment(drifting_grating_filepath)
+    sess.enrich(drift_enrich)
+    sess.save("drifting.nwb")
+
+    # graph_saccades(sess)
     tw = 2
 
 
 if __name__ == "__main__":
-    smain()
+    # drifting_grating_enrichment_testing()
+    # DOWNLOAD EXAMPLE DATA: https://drive.google.com/file/d/1tQwGY4NG8EC37rE4gxCcxmIGIpxMpVxv/view?usp=sharing
+
+    # Get the filenames for the timestamps.txt and dlc CSV (REPLACE WITH YOUR FILENAMES HERE!")
+    prefix = "data"
+    dlc_filepath = os.path.abspath(os.path.join(prefix, "20240410_unitME_session001_rightCam-0000DLC_resnet50_GazerMay24shuffle1_1030000.csv"))
+    timestamp_filepath = os.path.abspath(os.path.join(prefix, "20240410_unitME_session001_rightCam_timestamps.txt"))
+    drifting_grating_filepath = "data/driftingGratingMetadata-0.txt"
+
+    main(dlc_filepath, timestamp_filepath, drifting_grating_filepath)
