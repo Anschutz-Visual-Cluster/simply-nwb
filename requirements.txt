@@ -17,3 +17,4 @@ dict-plus
 spencer-funcs>=0.0.3
 matplotlib
 ipympl
+plotly

@@ -72,7 +72,7 @@ def graph_saccades(sess: NWBSession):
     epochs_nasal = sess.pull("PredictSaccades.saccades_predicted_nasal_epochs")
     nasal_peaks = sess.pull("PredictSaccades.saccades_predicted_nasal_peak_indices")
 
-    startstop_idxs = ((epochs_nasal - nasal_peaks[:, None]) + 40)
+    startstop_idxs = ((epochs_nasal - nasal_peaks[:, None]) + 40)  # 40 is half of the 80ms timewindow captured around the saccade, since they are centered
     for i in range(10):
         plt.plot(nasal[i])
         plt.vlines(startstop_idxs[i, 0], np.min(nasal[i]), np.max(nasal[i]))
@@ -149,11 +149,13 @@ def main(dlc_filepath, timestamp_filepath, drifting_grating_filepath):
     print("Saving predicted..")
     sess.save("predicted.nwb")  # Save as our finalized session, ready for analysis
     #
-    # print("Adding drifting grating data..")
-    # drift_enrich = DriftingGratingEnrichment(drifting_grating_filepath)
-    # sess.enrich(drift_enrich)
-    # sess.save("drifting.nwb")
+    print("Adding drifting grating data..")
+    drift_enrich = DriftingGratingEnrichment(drifting_grating_filepath)
+    sess.enrich(drift_enrich)
+    sess.save("drifting.nwb")
 
+    epochs = sess.to_dict()["PredictSaccades"]["saccades_predicted_temporal_epochs"]
+    ts = sess.to_dict()["DriftingGrating"]["Timestamp"]
 
     graph_saccades(sess)
     tw = 2
@@ -164,9 +166,12 @@ if __name__ == "__main__":
     # DOWNLOAD EXAMPLE DATA: https://drive.google.com/file/d/1tQwGY4NG8EC37rE4gxCcxmIGIpxMpVxv/view?usp=sharing
 
     # Get the filenames for the timestamps.txt and dlc CSV (REPLACE WITH YOUR FILENAMES HERE!")
-    prefix = "data"
-    dlc_filepath = os.path.abspath(os.path.join(prefix, "20240410_unitME_session001_rightCam-0000DLC_resnet50_GazerMay24shuffle1_1030000.csv"))
-    timestamp_filepath = os.path.abspath(os.path.join(prefix, "20240410_unitME_session001_rightCam_timestamps.txt"))
-    drifting_grating_filepath = "data/driftingGratingMetadata-0.txt"
+    # prefix = "data"
+    # dlc_filepath = os.path.abspath(os.path.join(prefix, "20240410_unitME_session001_rightCam-0000DLC_resnet50_GazerMay24shuffle1_1030000.csv"))
+    # timestamp_filepath = os.path.abspath(os.path.join(prefix, "20240410_unitME_session001_rightCam_timestamps.txt"))
+
+    dlc_filepath = "data/anna/20241022_unitR2_session003_rightCam-0000DLC_resnet50_pupilsizeFeb6shuffle1_1030000.csv"
+    timestamp_filepath = "data/anna/20241022_unitR2_session003_rightCam_timestamps.txt"
+    drifting_grating_filepath = "data/anna/driftingGratingMetadata-0.txt"
 
     main(dlc_filepath, timestamp_filepath, drifting_grating_filepath)
