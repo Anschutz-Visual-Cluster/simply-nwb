@@ -217,9 +217,5 @@ if __name__ == "__main__":
     dlc_filepath = "data/anna/20241022_unitR2_session003_rightCam-0000DLC_resnet50_pupilsizeFeb6shuffle1_1030000.csv"
     timestamp_filepath = "data/anna/20241022_unitR2_session003_rightCam_timestamps.txt"
     drifting_grating_filepath = "data/anna/driftingGratingMetadata-0.txt"
-    import matplotlib
-    import os
-    os.environ["QT_QPA_PLATFORM"] = "wayland"
-    matplotlib.use("QtAgg")
 
     main(dlc_filepath, timestamp_filepath, drifting_grating_filepath)
