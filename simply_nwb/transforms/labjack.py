@@ -1,6 +1,7 @@
 import os
 from typing import Optional, Any
 
+import numpy as np
 import pendulum
 import pandas as pd
 from pynwb import NWBFile
@@ -162,6 +163,9 @@ def labjack_load_file(filename: str) -> dict:
     """
     if not os.path.exists(filename):
         raise ValueError(f"File '{filename}' not found in current working path '{os.getcwd()}")
+    import logging
+    lg = logging.getLogger("simply_nwb.transforms.labjack")
+    lg.debug(f"Loading '{filename}..")
 
     with open(filename, "r") as f:
         lines = f.readlines()
@@ -184,3 +188,34 @@ def labjack_load_file(filename: str) -> dict:
             "metadata": meta_data,
             "date": date
         }
+
+def labjack_concat_files(file_list: list[str], alignment_key: str = "Time") -> dict:
+    """
+    Load a list of labjack files and concat them all, using a column as the alignment key (defaults to "Time")
+
+    :returns: a dict like {col1: [data1], ...}
+    """
+    cols = None
+    all_data = {}
+    unsorted = []
+    for filename in file_list:
+        d = labjack_load_file(filename)
+        if not cols:
+            cols = d["data"].columns.tolist()
+            for col in cols:
+                all_data[col] = []
+
+        unsorted.append(d)
+
+    # Sort files by key (default is "Time") value
+    fixed = list(sorted(unsorted, key=lambda x: x["data"][alignment_key][0]))
+
+    for labjack_filedata in fixed:
+        for col in cols:
+            all_data[col].append(labjack_filedata["data"][col])
+
+    # Turn the data into a numpy arr
+    for col in cols:
+        all_data[col] = np.array(all_data[col]).reshape(-1)  # Reshape from each labjack file into a single array
+
+    return all_data  # Returns something like {"Time": <np.array>, "v0": ..., ...}

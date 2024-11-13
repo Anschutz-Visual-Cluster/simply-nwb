@@ -11,6 +11,9 @@ from simply_nwb.pipeline.enrichments.saccades.drifting_grating import DriftingGr
 from simply_nwb.pipeline.enrichments.saccades.predict_gui import PredictedSaccadeGUIEnrichment
 import matplotlib.pyplot as plt
 
+from simply_nwb.pipeline.enrichments.saccades.predicted_algorithm import PredictedSaccadeAlgoEnrichment
+import plotly.express as px
+
 
 def create_nwb():
     # Create the NWB file, TODO Put data in here about mouse and experiment
@@ -48,7 +51,18 @@ def create_putative_nwb(dlc_filepath, timestamp_filepath):
     raw_nwbfile = create_nwb()  # This is the RAW nwbfile, direct output from a 'conversion script' in this example we just make a dummy one
 
     # Prepare an enrichment object to be run, and insert the raw data into our nwb in memory
-    enrichment = PutativeSaccadesEnrichment.from_raw(raw_nwbfile, dlc_filepath, timestamp_filepath)
+    enrichment = PutativeSaccadesEnrichment.from_raw(
+        raw_nwbfile, dlc_filepath, timestamp_filepath,
+        # Need to give the units for the DLC file, if the number of columns are different than expected
+        # For example if the DLC columns are like:
+        # ['bodyparts_coords', 'center_x', 'center_y', 'center_likelihood', 'nasal_x', 'nasal_y', 'nasal_likelihood', 'temporal_x', 'temporal_y', 'temporal_likelihood', 'dorsal_x', 'dorsal_y', 'dorsal_likelihood', 'ventral_x', 'ventral_y', 'ventral_likelihood']
+        # Then the corresponding units will be
+        units=["idx", "px", "px", "likelihood", "px", "px", "likelihood", "px", "px", "likelihood", "px", "px", "likelihood", "px", "px", "likelihood"],
+        # If the features tracked by DLC do not match the default, the names of the coordinates and the likelihoods will have to be overwritten
+        x_center="center_x",
+        y_center="center_y",
+        likelihood="center_likelihood",
+    )
 
     sess = NWBSession(raw_nwbfile)  # Create a session using our in-memory NWB
     # Enrich our nwb into 'putative' saccades (what we think *might* be a saccade)
@@ -64,20 +78,34 @@ def graph_saccades(sess: NWBSession):
     nasal = sess.pull("PredictSaccades.saccades_predicted_nasal_waveforms")[:, :, 0]
     temporal = sess.pull("PredictSaccades.saccades_predicted_temporal_waveforms")[:, :, 0]
 
-    [plt.plot(d, color="orange") for d in temporal]
-    [plt.plot(d, color="blue") for d in nasal]
+    # plotly code
+    colors = []
+    colors.extend(["blue"]*len(nasal))
+    colors.extend(["orange"]*len(temporal))
+    px.line(np.vstack([nasal, temporal]).T, color_discrete_sequence=colors).show()
 
-    plt.show()
+    # matplotlib code
+    # [plt.plot(d, color="orange") for d in temporal]
+    # [plt.plot(d, color="blue") for d in nasal]
+    # plt.show()
 
     epochs_nasal = sess.pull("PredictSaccades.saccades_predicted_nasal_epochs")
     nasal_peaks = sess.pull("PredictSaccades.saccades_predicted_nasal_peak_indices")
-
     startstop_idxs = ((epochs_nasal - nasal_peaks[:, None]) + 40)  # 40 is half of the 80ms timewindow captured around the saccade, since they are centered
+
+    # plotly code
+    fig = px.line(nasal[:10].T, color_discrete_sequence=["blue"]*10)
     for i in range(10):
-        plt.plot(nasal[i])
-        plt.vlines(startstop_idxs[i, 0], np.min(nasal[i]), np.max(nasal[i]))
-        plt.vlines(startstop_idxs[i, 1], np.min(nasal[i]), np.max(nasal[i]))
-    plt.show()
+        fig.add_vline(startstop_idxs[i, 0])
+        fig.add_vline(startstop_idxs[i, 1])
+    fig.show()
+
+    # matplotlib code
+    # for i in range(10):
+    #     plt.plot(nasal[i])
+    #     plt.vlines(startstop_idxs[i, 0], np.min(nasal[i]), np.max(nasal[i]))
+    #     plt.vlines(startstop_idxs[i, 1], np.min(nasal[i]), np.max(nasal[i]))
+    # plt.show()
 
     tw = 2
 
@@ -103,9 +131,11 @@ def drifting_grating_enrichment_testing():
 
 
 def main(dlc_filepath, timestamp_filepath, drifting_grating_filepath):
-    ###
+    ### REMOVE THIS FOR ACTUAL TRAINING
     os.environ["NWB_DEBUG"] = "True"  # NOTE ONLY USE TO QUICKLY TRAIN A MODEL (not for real data)
     ####
+    num_samples = 20  # YOU WILL WANT TO CHANGE THIS TO 100+ FOR ACTUAL USE!
+
 
     if not os.path.exists("putative.nwb"):
         create_putative_nwb(dlc_filepath, timestamp_filepath)
@@ -134,7 +164,13 @@ def main(dlc_filepath, timestamp_filepath, drifting_grating_filepath):
     # putats = [os.path.join(fn, v) for v in l[:5]]
     # enrich = PredictedSaccadeGUIEnrichment(200, putats, 20, putative_kwargs={})
 
-    predict_enrich = PredictedSaccadeGUIEnrichment(200, ["putative.nwb", "putative.nwb"], 20, putative_kwargs={})
+    predict_enrich = PredictedSaccadeAlgoEnrichment()  # TODO work on this algorithm, use below enrichment code instead
+    # predict_enrich = PredictedSaccadeGUIEnrichment(200, ["putative.nwb", "putative.nwb"], num_samples, putative_kwargs={
+    # If the features tracked by DLC do not match the default, the names of the coordinates and the likelihoods will have to be overwritten
+    # "x_center": "center_x",
+    # "y_center": "center_y",
+    # "likelihood": "center_likelihood",
+    # })
 
     # This will open two guis, where you will identify which direction the saccade is, and what the start and stop is
     # when the gui data entry is done, it will begin training the classifier models. The models are saved so if
@@ -154,6 +190,14 @@ def main(dlc_filepath, timestamp_filepath, drifting_grating_filepath):
     sess.enrich(drift_enrich)
     sess.save("drifting.nwb")
 
+    # y0 'barcode' of a count
+    # y1 default drifting grating event happened, align driftingGrating-0.txt
+    # Assume that the first 'pulse' in the labjack data corresponds to the first event in the driftingGrating-0.txt
+    # y2 - video camera timing acquisition frame
+    # saccade epoch in frames? map to
+    # y2 timestamps for video frames
+    # a frame is 0 or 1, each time it flips is a new frame, 0 to 1, 1 to 0 etc..
+    # y3 - misc analogue signal, per usecase
     epochs = sess.to_dict()["PredictSaccades"]["saccades_predicted_temporal_epochs"]
     ts = sess.to_dict()["DriftingGrating"]["Timestamp"]
 
@@ -173,5 +217,9 @@ if __name__ == "__main__":
     dlc_filepath = "data/anna/20241022_unitR2_session003_rightCam-0000DLC_resnet50_pupilsizeFeb6shuffle1_1030000.csv"
     timestamp_filepath = "data/anna/20241022_unitR2_session003_rightCam_timestamps.txt"
     drifting_grating_filepath = "data/anna/driftingGratingMetadata-0.txt"
+    import matplotlib
+    import os
+    os.environ["QT_QPA_PLATFORM"] = "wayland"
+    matplotlib.use("QtAgg")
 
     main(dlc_filepath, timestamp_filepath, drifting_grating_filepath)

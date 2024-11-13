@@ -27,3 +27,14 @@ def nwb_labjack():
     t = nwbfile.processing["behavior"]["labjack_file_1_metadata"]
     t = nwbfile.processing["behavior"]["labjack_file_1_metadata"]["CH+"]
     return nwbfile, []
+
+def loading_labjack_testing():
+    from simply_nwb.transforms.labjack import labjack_concat_files
+    from pathlib import Path
+    dats = list(Path("../data/anna/labjack").glob("*.dat"))
+    d = labjack_concat_files(dats)
+    tw = 2
+
+
+# if __name__ == "__main__":
+#     loading_labjack_testing()

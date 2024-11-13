@@ -4,11 +4,10 @@ import pickle
 
 import numpy as np
 from pynwb import NWBHDF5IO
-from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 
 from simply_nwb.pipeline import Enrichment
 from simply_nwb.pipeline.enrichments.saccades import PredictSaccadesEnrichment, PutativeSaccadesEnrichment
-from simply_nwb.pipeline.util.saccade_gui.classifiers import DirectionalClassifier
+from simply_nwb.pipeline.util.saccade_algo.directional import DirectionalClassifier
 from simply_nwb.pipeline.util.saccade_gui.data_generator import DirectionDataGenerator, EpochDataGenerator
 from simply_nwb.pipeline.util.saccade_gui.direction import SaccadeDirectionLabelingGUI
 from simply_nwb.pipeline.util.saccade_gui.epochs import SaccadeEpochLabelingGUI
@@ -84,6 +83,11 @@ class PredictedSaccadeGUIEnrichment(PredictSaccadesEnrichment):
         while gui.isRunning():
             continue
         x, y = gui.trainingData
+
+        # debug testing
+        # x = np.array([[20.0,40.0]]*len(putative_idxs))
+        # y = np.array([1.0]*len(putative_idxs))
+
         self._save_direction_prelabeled_data(x, y)
         return x, y
 
