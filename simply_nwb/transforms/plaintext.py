@@ -126,3 +126,37 @@ def drifting_grating_metadata_read(filename: str, data_to_numpy: bool = True, co
             processed[col] = np.array(processed[col])
 
     return processed
+
+
+def drifting_grating_metadata_read_from_filelist(files: list[str], data_to_numpy: bool = True, columns_key: str = "Columns", max_line_len: int = 100000, alignment_key: str = "Timestamp") -> {str: Union [str, list]}:
+    """
+    Grab a list of labjack files and concat them together into a single data structure.
+    Will arrange the data based on an alignment key, defaults to 'Timestamp'
+    """
+
+    unsorted = []
+
+    for file in files:
+        data = drifting_grating_metadata_read(file, data_to_numpy, columns_key, max_line_len)
+        unsorted.append(data)
+    sorteddata = sorted(unsorted, key=lambda x: x[alignment_key][0])  # Sort on the first value of the alignment key, ie the first timestamp in the file
+
+    alldata = {}
+    for data in sorteddata:
+        for k, v in data.items():
+            if k not in alldata:
+                alldata[k] = []
+
+            if isinstance(v, list):
+                alldata[k].extend(v)
+            elif isinstance(v, np.ndarray):
+                alldata[k].extend(list(v))
+            else:
+                alldata[k].append(v)
+
+    # Convert the numerical arrays to numpy
+    for k, v in alldata.items():
+        if not isinstance(v[0], str):
+            alldata[k] = np.array(v)
+
+    return alldata

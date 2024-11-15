@@ -1,4 +1,7 @@
+import logging
 import os
+import re
+from pathlib import Path
 
 import numpy as np
 import pendulum
@@ -7,7 +10,7 @@ from pynwb.file import Subject
 from simply_nwb import SimpleNWB
 from simply_nwb.pipeline import NWBSession
 from simply_nwb.pipeline.enrichments.saccades import PutativeSaccadesEnrichment
-from simply_nwb.pipeline.enrichments.saccades.drifting_grating import DriftingGratingEnrichment
+from simply_nwb.pipeline.enrichments.saccades.drifting_grating import DriftingGratingLabjackEnrichment
 from simply_nwb.pipeline.enrichments.saccades.predict_gui import PredictedSaccadeGUIEnrichment
 import matplotlib.pyplot as plt
 
@@ -113,8 +116,11 @@ def graph_saccades(sess: NWBSession):
 def drifting_grating_enrichment_testing():
     print("Testing enrichment 'DriftingGrating'")
 
-    enrich = DriftingGratingEnrichment("data/driftingGratingMetadata-0.txt")
-    sess = NWBSession(create_nwb())
+    # enrich = DriftingGratingLabjackEnrichment(Path().glob("data/anna/driftingGratingMetadata-*.txt"), Path().glob("data/anna/labjack/*.dat"))
+    matches = list(filter(re.compile("([^\d\s])*_([7-9]|1[0-2])\.dat").match, [str(v) for v in Path().glob("data/anna/labjack/*.dat")]))
+
+    enrich = DriftingGratingLabjackEnrichment(Path().glob("data/anna/driftingGratingMetadata-*.txt"), matches)
+    sess = NWBSession("predicted.nwb")
     sess.enrich(enrich)
 
     print("Description dict:")
@@ -125,7 +131,6 @@ def drifting_grating_enrichment_testing():
     eventdata = sess.pull("DriftingGrating.Event (1=Grating, 2=Motion, 3=Probe, 4=ITI)")
     timestamps = sess.pull("DriftingGrating.Timestamp")
     # eventdata and timestamps align
-
 
     tw = 2
 
@@ -151,14 +156,13 @@ def main(dlc_filepath, timestamp_filepath, drifting_grating_filepath):
 
     # For 'putative_kwargs' put the arguments in dict kwarg style for the PutativeSaccadesEnrichment() if it is non-default. Format like {"x_center": .., }
     # this example there are no extra kwargs, but if you name your DLC columns different, you will need to tell it which column names relate to your data
-    # columns will be concatenated with the above column, so something like
+    # Columns will be concatenated with the above column, so something like
     # a,b,c
     # x,y,z
     # will be turned into the keys a_x, b_y, and z_c
     # so you would use {"x_center": "a_x", ..}
     # Normally for list_of_putative_nwbs_filenames you would want more than one session, this is where the training data
-    # will be sampled from
-
+    #   will be sampled from
     # fn = "D:\\spencer_data\\putative_nwbs"
     # l = os.listdir(fn)
     # putats = [os.path.join(fn, v) for v in l[:5]]
@@ -185,27 +189,20 @@ def main(dlc_filepath, timestamp_filepath, drifting_grating_filepath):
     print("Saving predicted..")
     sess.save("predicted.nwb")  # Save as our finalized session, ready for analysis
     #
-    print("Adding drifting grating data..")
-    drift_enrich = DriftingGratingEnrichment(drifting_grating_filepath)
-    sess.enrich(drift_enrich)
-    sess.save("drifting.nwb")
-
-    # y0 'barcode' of a count
-    # y1 default drifting grating event happened, align driftingGrating-0.txt
-    # Assume that the first 'pulse' in the labjack data corresponds to the first event in the driftingGrating-0.txt
-    # y2 - video camera timing acquisition frame
-    # saccade epoch in frames? map to
-    # y2 timestamps for video frames
-    # a frame is 0 or 1, each time it flips is a new frame, 0 to 1, 1 to 0 etc..
-    # y3 - misc analogue signal, per usecase
-    epochs = sess.to_dict()["PredictSaccades"]["saccades_predicted_temporal_epochs"]
-    ts = sess.to_dict()["DriftingGrating"]["Timestamp"]
+    # print("Adding drifting grating data..")
+    # drift_enrich = DriftingGratingLabjackEnrichment(drifting_grating_filepath)
+    # sess.enrich(drift_enrich)
+    # sess.save("drifting.nwb")
+    #
+    # epochs = sess.to_dict()["PredictSaccades"]["saccades_predicted_temporal_epochs"]
+    # ts = sess.to_dict()["DriftingGrating"]["Timestamp"]
 
     graph_saccades(sess)
     tw = 2
 
 
 if __name__ == "__main__":
+    logging.getLogger().setLevel(logging.DEBUG)
     # drifting_grating_enrichment_testing()
     # DOWNLOAD EXAMPLE DATA: https://drive.google.com/file/d/1tQwGY4NG8EC37rE4gxCcxmIGIpxMpVxv/view?usp=sharing
 
@@ -218,4 +215,7 @@ if __name__ == "__main__":
     timestamp_filepath = "data/anna/20241022_unitR2_session003_rightCam_timestamps.txt"
     drifting_grating_filepath = "data/anna/driftingGratingMetadata-0.txt"
 
-    main(dlc_filepath, timestamp_filepath, drifting_grating_filepath)
+    # main(dlc_filepath, timestamp_filepath, drifting_grating_filepath)
+
+    drifting_grating_enrichment_testing()
+

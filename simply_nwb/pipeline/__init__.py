@@ -19,6 +19,7 @@ class NWBSession(object):
         :param filename_or_nwbobj: filepath to the nwb file or pynwb.NWBFile object
         :param custom_enrichments: list of class types for classes inheriting the Enrichment class
         """
+
         if isinstance(filename_or_nwbobj, pynwb.NWBFile):
             self.nwb = filename_or_nwbobj
             self._nwb_fp = None

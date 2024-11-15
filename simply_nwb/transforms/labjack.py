@@ -189,6 +189,7 @@ def labjack_load_file(filename: str) -> dict:
             "date": date
         }
 
+
 def labjack_concat_files(file_list: list[str], alignment_key: str = "Time") -> dict:
     """
     Load a list of labjack files and concat them all, using a column as the alignment key (defaults to "Time")
