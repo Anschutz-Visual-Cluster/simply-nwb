@@ -11,7 +11,7 @@ Use me as a starter point to make your own enrichment
 """
 
 # TODO find an ideal session to test on
-
+# TODO Create graph code for analyzing the labjack data
 class DriftingGratingEnrichment(Enrichment):
     def __init__(self, drifting_grating_metadata_filenames, drifting_kwargs={}, drifting_grating_filename_str: str = "filename"):
         super().__init__(NWBValueMapping({
