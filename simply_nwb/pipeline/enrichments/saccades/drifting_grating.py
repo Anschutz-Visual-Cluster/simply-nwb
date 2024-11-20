@@ -13,7 +13,6 @@ Use me as a starter point to make your own enrichment
 class DriftingGratingEnrichment(Enrichment):
     def __init__(self, drifting_grating_metadata_filenames, drifting_kwargs={}):
         super().__init__(NWBValueMapping({
-            # TODO uncomment me
             "PredictSaccades": EnrichmentReference("PredictSaccades")  # Required that the saccades are already in file
         }))
         self.meta = drifting_grating_metadata_read_from_filelist(drifting_grating_metadata_filenames, **drifting_kwargs)
@@ -23,11 +22,37 @@ class DriftingGratingEnrichment(Enrichment):
         # TODO, without labjack we can guess the video frames, will be less accurate though
         raise NotImplemented
 
+    def get_gratings_startstop(self):
+        # TODO get the start/stop times of each grating instance, on the same timescale as the video frames
+        raise NotImplemented
+
     def _run(self, pynwb_obj):
         video_windows = self.get_video_startstop()
+        grating_windows = self.get_gratings_startstop()
+
         # pynwb_obj.processing["Enrichment.PredictSaccades"].containers["saccades_predicted_temporal_epochs"].data[:]
+        fps = pynwb_obj.processing["Enrichment.PredictSaccades"]["saccades_fps"].data[0]
+
+        def process_saccade_epochs(saccade_epoch: np.ndarray):
+            # saccade_epoch is a (numsaccade, 2) array for the start/stop of each saccade of a particular type
+            norm = (saccade_epoch / fps)[:, 0]  # Grab the start of each epoch, divide by the fps to get the frame time in seconds
+            bins_idxs = np.digitize(norm, video_windows[:, 0])  # Bin each saccade epoch time into indexes into the video windows for which frame section it is within
+            # The start of each saccade in terms of it's framewindow
+            epochstart_framewindows = video_windows[bins_idxs]
+
+            # TODO use the framewindows for the epochs to find which grating windows they fell within, get those idxs,
+            # then relay the relevant grating information for each saccade (using idxs?)
+            tw = 2
+
+        nasal = pynwb_obj.processing["Enrichment.PredictSaccades"]["saccades_predicted_nasal_epochs"].data[:]
+        temporal = pynwb_obj.processing["Enrichment.PredictSaccades"]["saccades_predicted_temporal_epochs"].data[:]
+
+        process_saccade_epochs(nasal)
+        process_saccade_epochs(temporal)
+
         # TODO align the saccades with the video start/stops, then use that to determine which drifting grating the saccade was in
         tw = 2
+        # px.line(np.digitize(saccade_epoch[:,0], video_windows[:, 0])).show()
         # get var from req
         # self._get_req_val("PutativeSaccades.saccades_putative_waveforms", pynwb_obj)
         # self._get_req_val("myvariable_i_need", pynwb_obj)
@@ -78,6 +103,9 @@ class DriftingGratingLabjackEnrichment(DriftingGratingEnrichment):
     def get_video_startstop(self):
         # Get an array of (time, 2) for the start/stop of the frames
         return startstop_of_squarewave(self.dats[self.frames_channel])[:, :2]  # Chop off the state value, only want start/stop
+
+    # def get_gratings_startstop(self):
+    #     return startstop_of_squarewave(self.dats[self.grating_channel])[:, :2]  # Chop off state value
 
     # def _run(self, pynwb_obj):
     #     # get var from req
