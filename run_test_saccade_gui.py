@@ -131,6 +131,8 @@ def drifting_grating_enrichment_testing():
     # The long name still works
     eventdata = sess.pull("DriftingGrating.Event (1=Grating, 2=Motion, 3=Probe, 4=ITI)")
     timestamps = sess.pull("DriftingGrating.Timestamp")
+    print("Available funcs:")
+    print(sess.get_funclist("DriftingGrating"))
     # eventdata and timestamps align
 
     tw = 2

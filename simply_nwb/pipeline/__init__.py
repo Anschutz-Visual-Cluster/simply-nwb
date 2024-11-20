@@ -96,13 +96,21 @@ class NWBSession(object):
 
     def get_funclist(self, namespace: str) -> list[str]:
         self._check_enrichment_name(namespace)
-        return self.__builtin_enrichments[namespace].func_list()
+        funcs = self.__builtin_enrichments[namespace].func_list()
+        return [str(f) for f in funcs]
 
     def func(self, namespaced_key: str) -> Callable:
         namespace, key = self._parse_namespaced_key(namespaced_key)
         funcs = self.__builtin_enrichments[namespace].func_list()
-        if key not in funcs:
-            raise ValueError(f"Function '{key}' not found in Enrichment '{namespace}' Available functions '{funcs}'")
+
+        found = False
+        for f in funcs:
+            if key == f.name:
+                found = True
+
+        if not found:
+            raise ValueError(f"Function '{key}' not found in Enrichment '{namespace}' Available functions '{[str(f) for f in funcs]}'")
+
         myfunc = getattr(self.__builtin_enrichments[namespace], key)
         newfunc = functools.partial(myfunc, self.nwb)
         return newfunc

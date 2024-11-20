@@ -34,7 +34,7 @@ def startstop_of_squarewave(arr: np.ndarray, minval=None, maxval=None, epsilon=.
         if idx == 0:
             foundedge = current_edge
 
-        if current_edge*-1 == foundedge and current_edge != 0 or idx == len(arr)-1:  # We have flipped (or ended)
+        if current_edge * -1 == foundedge and current_edge != 0 or idx == len(arr) - 1:  # We have flipped (or ended)
             current_window.append(idx)
             startstop.append([*current_window, foundedge])  # Append [start, stop, state]
             foundedge = current_edge
@@ -51,4 +51,3 @@ def startstop_of_squarewave(arr: np.ndarray, minval=None, maxval=None, epsilon=.
     # px.line(tmp).show()
 
     return result
-

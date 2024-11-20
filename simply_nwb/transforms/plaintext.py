@@ -26,11 +26,12 @@ def plaintext_metadata_read(filename: str, sep: str = ":") -> {str: str}:
         return {line.split(sep)[0].strip(): line.split(sep)[1].strip() for line in lines}
 
 
-def drifting_grating_metadata_read(filename: str, data_to_numpy: bool = True, columns_key: str = "Columns", max_line_len: int = 100000) -> {str: Union[str, list]}:
+def drifting_grating_metadata_read(filename: str, data_to_numpy: bool = True, columns_key: str = "Columns", max_line_len: int = 100000, filename_str: str = "filename") -> {str: Union[str, list]}:
     """
     Read in data for a drifting grating metadata like
     if data_to_numpy is True, will convert the numerical part of the file to a numpy array
     max_line_len is how far along a line we should parse for '(' and ')' if reached will error (number of chars)
+    Dunno why I wrote a token parser for this lol
 
     Meta1: desc1
     Meta2: desc2
@@ -56,7 +57,7 @@ def drifting_grating_metadata_read(filename: str, data_to_numpy: bool = True, co
     while True:
         line = data[file_line_idx]
         # If line starts with a number, assume the rest is a numerical csv
-        if line.startswith("------------") or len(line) < 1 or re.match("\d", line[0]):
+        if line.startswith("------------") or len(line) < 1 or re.match(r"\d", line[0]):
             break
         sep_idx = line.find(":")
         key = line[:sep_idx].strip()
@@ -124,11 +125,12 @@ def drifting_grating_metadata_read(filename: str, data_to_numpy: bool = True, co
     if data_to_numpy:
         for col in cols:
             processed[col] = np.array(processed[col])
+    processed[filename_str] = str(filename)
 
     return processed
 
 
-def drifting_grating_metadata_read_from_filelist(files: list[str], data_to_numpy: bool = True, columns_key: str = "Columns", max_line_len: int = 100000, alignment_key: str = "Timestamp") -> {str: Union [str, list]}:
+def drifting_grating_metadata_read_from_filelist(files: list[str], data_to_numpy: bool = True, columns_key: str = "Columns", max_line_len: int = 100000, alignment_key: str = "Timestamp", filelen_str: str = "file_len", filename_str: str = "filename") -> {str: Union [str, list]}:
     """
     Grab a list of labjack files and concat them together into a single data structure.
     Will arrange the data based on an alignment key, defaults to 'Timestamp'
@@ -137,20 +139,30 @@ def drifting_grating_metadata_read_from_filelist(files: list[str], data_to_numpy
     unsorted = []
 
     for file in files:
-        data = drifting_grating_metadata_read(file, data_to_numpy, columns_key, max_line_len)
+        data = drifting_grating_metadata_read(file, data_to_numpy, columns_key, max_line_len, filename_str=filename_str)
+        file_len = len(data[alignment_key])
+        data[filelen_str] = file_len
         unsorted.append(data)
+
     sorteddata = sorted(unsorted, key=lambda x: x[alignment_key][0])  # Sort on the first value of the alignment key, ie the first timestamp in the file
 
-    alldata = {}
+    alldata = {filelen_str: []}
+    current_len = 0  # Current length of the data, used to keep track of which files had which data
     for data in sorteddata:
+        datalen = data[filelen_str]
+        current_len = current_len + datalen
+        alldata[filelen_str].append(current_len)
+
         for k, v in data.items():
+            if k == filelen_str:
+                continue
             if k not in alldata:
                 alldata[k] = []
+            if isinstance(v, np.ndarray):
+                v = list(v)
 
             if isinstance(v, list):
                 alldata[k].extend(v)
-            elif isinstance(v, np.ndarray):
-                alldata[k].extend(list(v))
             else:
                 alldata[k].append(v)
 

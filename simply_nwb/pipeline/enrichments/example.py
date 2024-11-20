@@ -1,4 +1,5 @@
 from simply_nwb.pipeline import Enrichment, NWBValueMapping
+from simply_nwb.pipeline.funcinfo import FuncInfo
 
 """
 Use me as a starter point to make your own enrichment
@@ -36,9 +37,11 @@ class ExampleEnrichment(Enrichment):
         }
 
     @staticmethod
-    def func_list() -> list:
+    def func_list() -> list[FuncInfo]:
         return [
-            "test"  # Form of functions should be f(nwbobj, args, kwargs) -> Any
+            #(self, funcname: str, funcdescription: str, arg_and_description_list: dict[str, str], example_str: str):
+            # Form of functions should be f(nwbobj, args, kwargs) -> Any
+            FuncInfo("test", "test function", {"args": "list of args to pass to the function", "kwargs": "dict of keyword arguments to pass to the function"}, "test(['myarg'], {'mykwarg': 8})")
         ]
 
     @staticmethod

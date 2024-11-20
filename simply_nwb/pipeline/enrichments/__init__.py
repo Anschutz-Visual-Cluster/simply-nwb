@@ -3,6 +3,7 @@ from typing import Any, Callable
 from pynwb import NWBFile, TimeSeries
 
 from simply_nwb import SimpleNWB
+from simply_nwb.pipeline.funcinfo import FuncInfo
 from simply_nwb.pipeline.value_mapping import NWBValueMapping
 
 
@@ -99,11 +100,10 @@ class Enrichment(object):
         raise NotImplemented
 
     @staticmethod
-    def func_list() -> list[str]:
+    def func_list() -> list[FuncInfo]:
         """
         Form of functions should be f(nwbobj, args, kwargs) -> Any
-        list of string names of the functions, like
-        ["test", "asdf", ..]
+        This is a list of simply_nwb.pipeline.funcinfo.FuncInfo objects
         """
         return []
 

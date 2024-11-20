@@ -10,6 +10,7 @@ from sklearn.impute import SimpleImputer
 
 from simply_nwb import SimpleNWB
 from simply_nwb.pipeline import Enrichment
+from simply_nwb.pipeline.funcinfo import FuncInfo
 from simply_nwb.pipeline.util import interpolate_flat_arr, smooth_flat_arr
 from simply_nwb.pipeline.util.saccade_gui.consts import PERISACCADIC_WINDOW_IN_SECONDS
 from simply_nwb.pipeline.value_mapping import NWBValueMapping
@@ -382,8 +383,11 @@ class PutativeSaccadesEnrichment(Enrichment):
         return saccade_waveforms, saccade_indicies
 
     @staticmethod
-    def func_list() -> list[str]:
-        return ["dropped_frames"]
+    def func_list() -> list[FuncInfo]:
+        return [
+            # (self, funcname: str, funcdescription: str, arg_and_description_list: dict[str, str], example_str: str):
+            FuncInfo("dropped_frames", "Number of dropped frames (int)", {}, "dropped_frames()")
+        ]
 
     @staticmethod
     def dropped_frames(pynwb_obj, timestamp_name):
