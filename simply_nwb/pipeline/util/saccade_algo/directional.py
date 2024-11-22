@@ -91,9 +91,9 @@ class DirectionalClassifier(object):
             peaks, properties = scipy.signal.find_peaks(smoothed_velocity, prominence=(None, 1))
             if plot_debug:
                 fig = plotly.subplots.make_subplots(rows=2, cols=1)
-                fig.add_trace(go.Scatter(**to_plotdict(waveform)), row=1, col=1)
-                fig.add_trace(go.Scatter(**to_plotdict(smoothed_velocity)), row=2, col=1)
-                fig.add_trace(go.Scatter(**to_plotdict(normalized_waveform_velocity)), row=2, col=1)
+                fig.add_trace(go.Scatter(**to_plotdict(waveform), fillcolor="blue", name="raw waveform"), row=1, col=1)
+                fig.add_trace(go.Scatter(**to_plotdict(smoothed_velocity), fillcolor="red", name="smoothed normalized velocity (flipped)"), row=2, col=1)
+                fig.add_trace(go.Scatter(**to_plotdict(normalized_waveform_velocity), fillcolor="green", name="normalized raw velocity"), row=2, col=1)
                 fig.show()
                 tw = 2
 
@@ -155,7 +155,7 @@ class DirectionalClassifier(object):
             # import matplotlib.pyplot as plt
             # plt.plot(sacc)
             # plt.show()
-            if self.is_too_noisy(sacc):
+            if self.is_too_noisy(sacc, True, True):
                 predicts.append(0)
                 continue
 
@@ -179,5 +179,3 @@ class DirectionalClassifier(object):
             self.is_too_noisy(arr[num, :], True, True)
 
         return np.array(predicts)[:, None]
-
-
