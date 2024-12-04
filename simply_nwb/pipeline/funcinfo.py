@@ -14,4 +14,4 @@ class FuncInfo(object):
         self.example = example_str
 
     def __str__(self):
-        return f"Function '{self.name}'\n\tArgs:\n\t{self.args}\n\tDesc:\n\t{self.desc}\n\tExample:\n\t{self.example}"
+        return f"Function '{self.name}'\n\tArgs:\n\t\t{self.args}\n\tDesc:\n\t\t{self.desc}\n\tExample:\n\t\t{self.example}"

@@ -116,8 +116,8 @@ class PredictSaccadesEnrichment(Enrichment):
         indices = indices[idxs]
 
         # Predict -1, 0, or 1
-        # pred_labels = self._direction_cls.predict(x_velocities)
-        pred_labels = self._direction_cls.predict(waveforms[:, :, 0])  # TODO use velocities instead?
+        pred_labels = self._direction_cls.predict(x_velocities)  # Used for LDA
+        # pred_labels = self._direction_cls.predict(waveforms[:, :, 0])  # Use for DirectionClassifier, TODO use velocities instead?
 
         return pred_labels, waveforms, indices
 

@@ -124,17 +124,25 @@ class PutativeSaccadesEnrichment(Enrichment):
             "saccades_putative_peak_indices",
             "saccades_putative_waveforms",
             "saccades_fps",
+            "raw_x",
+            "raw_y",
+            "raw_timestamps",
+            "raw_likelihoods"
         ]
 
     @staticmethod
     def descriptions() -> dict[str, str]:
         return {
-            "pose_corrected": "Corrected eye position (saccadenum, time, x/y)",
-            "pose_interpolated": "Interpolated eye position (saccadenum, time, x/y)",
-            "pose_decomposed": "PCA Imputed eye positions (saccadenum, time, x/y)",
-            "pose_missing": "Indexes of missing (nan) position values (saccadenum, time, x/y)",
-            "pose_reoriented": "Reoriented positions, so they all start from the same 0 (saccadenum, time, x/y)",
-            "pose_filtered": "Final interpolation and nan filtering of eye position pose_reoriented",
+            "raw_x": "x values directly from the DLC csv (time,)",
+            "raw_y":"y values directly from the DLC csv (time,)",
+            "raw_timestamps":"timestamps directly from the timestamps.txt (time,)",
+            "raw_likelihoods":"likelihoods directly from the DLC csv (time,)",
+            "pose_corrected": "Corrected eye position (time, x/y)",
+            "pose_interpolated": "Interpolated eye position (time, x/y)",
+            "pose_decomposed": "PCA Imputed eye positions (time, x/y)",
+            "pose_missing": "Indexes of missing (nan) position values (time, x/y)",
+            "pose_reoriented": "Reoriented positions, so they all start from the same 0 (time, x/y)",
+            "pose_filtered": "Final interpolation and nan filtering of eye position pose_reoriented (time, x/y)",
             "saccades_putative_peak_indices": "Index into time of the center (peak velocity) of the saccade (saccadenum,)",
             "saccades_putative_waveforms": "Waveforms of putative saccades (saccadenum, time, x/y)",
             "saccades_fps": "single value list like [fps] with the fps used to calculate eye positions",
@@ -154,7 +162,6 @@ class PutativeSaccadesEnrichment(Enrichment):
 
         :param pynwb_obj: NWB object to enrich
         """
-
         # Extract eye position
         self.logger.info("Extracting eye position..")
         x = self._get_req_val("x", pynwb_obj)
@@ -164,7 +171,9 @@ class PutativeSaccadesEnrichment(Enrichment):
         y[likelihood < self.likelihood_threshold] = np.nan
         # if >10%, then error, else interpolate
         ten_percent = int(len(x)*.1)
-        if len(np.where(np.isnan(x))[0]) > ten_percent or len(np.where(np.isnan(y))[0]) > ten_percent:
+        xnan = np.where(np.isnan(x))[0]
+        ynan = np.where(np.isnan(y))[0]
+        if len(xnan) > ten_percent or len(ynan) > ten_percent:
             raise ValueError("More than 10% of datapoints in CSV are NaN! Unable to continue!")
 
         corrected = self._correct_eye_position(x, y, pynwb_obj)  # pose/corrected
@@ -178,6 +187,10 @@ class PutativeSaccadesEnrichment(Enrichment):
         saccade_waveforms, saccade_indices = self._detect_putative_saccades(filtered)  # saccades/putative/{eye}/<indices and waveform>
 
         self.logger.info("Saving to NWB..")
+        self._save_val("raw_x", x, pynwb_obj)
+        self._save_val("raw_y", y, pynwb_obj)
+        self._save_val("raw_timestamps", self._get_req_val("timestamps", pynwb_obj), pynwb_obj)
+        self._save_val("raw_likelihoods", likelihood, pynwb_obj)
         self._save_val("pose_corrected", corrected, pynwb_obj)
         self._save_val("pose_interpolated", interpolated, pynwb_obj)
         self._save_val("pose_decomposed", decomposed, pynwb_obj)

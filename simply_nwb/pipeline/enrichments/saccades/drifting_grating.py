@@ -137,10 +137,11 @@ class DriftingGratingEnrichment(Enrichment):
     @staticmethod
     def _saccade_info(pynwb_obj, saccade_name, indexdata):
         # Get the drifting grating info for a given saccade or list of saccades
-        saccidxs = Enrichment.get_val(DriftingGratingEnrichment.get_name(), f"{saccade_name}_grating_idxs", pynwb_obj)
+        if saccade_name not in ["nasal", "temporal"]:
+            raise ValueError(f"Saccadename must be nasal or temporal, got '{saccade_name}'!")
 
-        tw = 2
-        pass
+        saccidxs = Enrichment.get_val(DriftingGratingEnrichment.get_name(), f"{saccade_name}_grating_idxs", pynwb_obj)
+        raise NotImplemented  # TODO
 
 
 class DriftingGratingLabjackEnrichment(DriftingGratingEnrichment):

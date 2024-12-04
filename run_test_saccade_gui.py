@@ -114,7 +114,9 @@ def graph_saccades(sess: NWBSession):
 
 
 def drifting_grating_enrichment_testing():
-    print("Testing enrichment 'DriftingGrating'")
+    # TODO make the fixes in simply_nwb.pipeline.enrichments.saccades.drifting_grating.py
+
+    print("Testing enrichment 'DriftingGratingLabjack'")
 
     enrich = DriftingGratingLabjackEnrichment(Path().glob("data/anna/driftingGratingMetadata-*.txt"), Path().glob("data/anna/labjack/*.dat"))
 
@@ -125,14 +127,14 @@ def drifting_grating_enrichment_testing():
     sess.enrich(enrich)
 
     print("Description dict:")
-    print(sess.description("DriftingGrating"))
+    print(sess.description("DriftingGratingLabjack"))
     print("Available keys:")
-    print(sess.available_keys("DriftingGrating"))
+    print(sess.available_keys("DriftingGratingLabjack"))
     # The long name still works
-    eventdata = sess.pull("DriftingGrating.Event (1=Grating, 2=Motion, 3=Probe, 4=ITI)")
-    timestamps = sess.pull("DriftingGrating.Timestamp")
+    eventdata = sess.pull("DriftingGratingLabjack.Event (1=Grating, 2=Motion, 3=Probe, 4=ITI)")
+    timestamps = sess.pull("DriftingGratingLabjack.Timestamp")
     print("Available funcs:")
-    print(sess.get_funclist("DriftingGrating"))
+    sess.print_funclist("DriftingGratingLabjack")
     # eventdata and timestamps align
 
     tw = 2
@@ -150,7 +152,9 @@ def main(dlc_filepath, timestamp_filepath, drifting_grating_filepath):
 
     sess = NWBSession("putative.nwb")  # Load in the session we would like to enrich to predictive saccades
 
-    print(f"Available funcs from PutativeSaccades: {sess.get_funclist('PutativeSaccades')}")
+    print(f"Available funcs from PutativeSaccades:")
+    sess.print_funclist('PutativeSaccades')
+
     dropped = sess.func("PutativeSaccades.dropped_frames")("rightCamTimestamps")
     print(f"Dropped frames: {dropped}")
 
@@ -171,13 +175,13 @@ def main(dlc_filepath, timestamp_filepath, drifting_grating_filepath):
     # putats = [os.path.join(fn, v) for v in l[:5]]
     # enrich = PredictedSaccadeGUIEnrichment(200, putats, 20, putative_kwargs={})
 
-    predict_enrich = PredictedSaccadeAlgoEnrichment()  # TODO work on this algorithm, use below enrichment code instead
-    # predict_enrich = PredictedSaccadeGUIEnrichment(200, ["putative.nwb", "putative.nwb"], num_samples, putative_kwargs={
+    # predict_enrich = PredictedSaccadeAlgoEnrichment()  # TODO work on this algorithm, use below enrichment code instead
+    predict_enrich = PredictedSaccadeGUIEnrichment(200, ["putative.nwb", "putative.nwb"], num_samples, putative_kwargs={
     # If the features tracked by DLC do not match the default, the names of the coordinates and the likelihoods will have to be overwritten
-    # "x_center": "center_x",
-    # "y_center": "center_y",
-    # "likelihood": "center_likelihood",
-    # })
+        "x_center": "center_x",
+        "y_center": "center_y",
+        "likelihood": "center_likelihood",
+    })
 
     # This will open two guis, where you will identify which direction the saccade is, and what the start and stop is
     # when the gui data entry is done, it will begin training the classifier models. The models are saved so if
@@ -200,7 +204,19 @@ def main(dlc_filepath, timestamp_filepath, drifting_grating_filepath):
     # epochs = sess.to_dict()["PredictSaccades"]["saccades_predicted_temporal_epochs"]
     # ts = sess.to_dict()["DriftingGrating"]["Timestamp"]
 
-    graph_saccades(sess)
+    # graph_saccades(sess)
+
+    # import matplotlib.pyplot as plt
+    # eyepos = sess.pull("PutativeSaccades.pose_filtered")[:, 0]
+    # fig = plt.plot(eyepos)
+    # nasal_peaks = sess.pull("PredictSaccades.saccades_predicted_nasal_peak_indices")
+    # temporal_peaks = sess.pull("PredictSaccades.saccades_predicted_temporal_peak_indices")
+    # for nas in nasal_peaks:
+    #     plt.vlines(nas, 95, 120, color="blue")
+    # for tmp in temporal_peaks:
+    #     plt.vlines(tmp, 95, 120, color="orange")
+    # plt.show()
+
     tw = 2
 
 
@@ -218,9 +234,14 @@ if __name__ == "__main__":
     # timestamp_filepath = "data/anna/20241022_unitR2_session003_rightCam_timestamps.txt"
     # drifting_grating_filepath = "data/anna/driftingGratingMetadata-0.txt"
 
-    dlc_filepath = "20241112_unitR2_session001_rightCam-0000DLC_resnet50_pupilsizeFeb6shuffle1_1030000.csv"
-    timestamp_filepath = "20241112_unitR2_session001_rightCam_timestamps.txt"
+    dlc_filepath = "data/suboptimal/20241029_unitR2_session003_rightCam-0000DLC_resnet50_pupilsizeFeb6shuffle1_1030000.csv"
+    timestamp_filepath = "data/suboptimal/20241029_unitR2_session003_rightCam_timestamps.txt"
     drifting_grating_filepath = ""
+
+    # prefix = ""
+    # dlc_filepath = "20241112_unitR2_session001_rightCam-0000DLC_resnet50_pupilsizeFeb6shuffle1_1030000.csv"
+    # timestamp_filepath = "20241112_unitR2_session001_rightCam_timestamps.txt"
+    # drifting_grating_filepath = ""
 
     main(dlc_filepath, timestamp_filepath, drifting_grating_filepath)
     # drifting_grating_enrichment_testing()

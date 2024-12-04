@@ -4,6 +4,7 @@ import pickle
 
 import numpy as np
 from pynwb import NWBHDF5IO
+from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 
 from simply_nwb.pipeline import Enrichment
 from simply_nwb.pipeline.enrichments.saccades import PredictSaccadesEnrichment, PutativeSaccadesEnrichment
@@ -260,25 +261,25 @@ class PredictedSaccadeGUIEnrichment(PredictSaccadesEnrichment):
 
     @staticmethod
     def get_pretrained_direction_model(wv, y_vals):
-        # load_model = PredictedSaccadeGUIEnrichment.load_pretrained_direction_model()
-        # if load_model:
-        #     return load_model
-        # print("No pretrained model found for direction, training..")
-        # # TODO do we want to use LDA?
-        # tmp_wv = np.broadcast_to(wv[:, :, None], shape=(*wv.shape, 2))
-        # x_velocities, idxs = PredictSaccadesEnrichment.preformat_waveforms(tmp_wv)
-        # x_velocities = np.array(x_velocities)
-        # non_nan_yvals = np.array(y_vals)[idxs]
-        #
-        # lda = LinearDiscriminantAnalysis()
-        # lda.fit(x_velocities, non_nan_yvals)
-        #
-        # fn = "predict_gui_directional_model.pickle"
-        # with open(fn, "wb") as fp:
-        #     pickle.dump(lda, fp)
-        # return lda
+        load_model = PredictedSaccadeGUIEnrichment.load_pretrained_direction_model()
+        if load_model:
+            return load_model
+        print("No pretrained model found for direction, training..")
+        # TODO do we want to use LDA?
+        tmp_wv = np.broadcast_to(wv[:, :, None], shape=(*wv.shape, 2))
+        x_velocities, idxs = PredictSaccadesEnrichment.preformat_waveforms(tmp_wv)
+        x_velocities = np.array(x_velocities)
+        non_nan_yvals = np.array(y_vals)[idxs]
 
-        return DirectionalClassifier()
+        lda = LinearDiscriminantAnalysis()
+        lda.fit(x_velocities, non_nan_yvals)
+
+        fn = "predict_gui_directional_model.pickle"
+        with open(fn, "wb") as fp:
+            pickle.dump(lda, fp)
+        return lda
+
+        # return DirectionalClassifier()
 
     @staticmethod
     def get_pretrained_epoch_models(wv, epoch_labels):

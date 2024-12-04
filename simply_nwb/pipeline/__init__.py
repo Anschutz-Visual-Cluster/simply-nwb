@@ -99,6 +99,11 @@ class NWBSession(object):
         funcs = self.__builtin_enrichments[namespace].func_list()
         return [str(f) for f in funcs]
 
+    def print_funclist(self, namespace: str):
+        funcs = self.get_funclist(namespace)
+        for f in funcs:
+            print(f)
+
     def func(self, namespaced_key: str) -> Callable:
         namespace, key = self._parse_namespaced_key(namespaced_key)
         funcs = self.__builtin_enrichments[namespace].func_list()
