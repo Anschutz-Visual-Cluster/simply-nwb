@@ -163,13 +163,12 @@ def labjack_load_file(filename: str) -> dict:
     """
     if not os.path.exists(filename):
         raise ValueError(f"File '{filename}' not found in current working path '{os.getcwd()}")
-    import logging
-    lg = logging.getLogger("simply_nwb.transforms.labjack")
-    lg.debug(f"Loading '{filename}..")
+
+    print(f"Loading '{filename}..")
 
     with open(filename, "r") as f:
         lines = f.readlines()
-        date = pendulum.parse(lines.pop(0).strip(), strict=False)
+        date = pendulum.parse(lines.pop(0).strip(), strict=False)  # First two lines are date and time
         time = pendulum.parse(lines.pop(0).strip(), strict=False, exact=False)
         date = date.set(
             hour=time.hour,
@@ -209,14 +208,25 @@ def labjack_concat_files(file_list: list[str], alignment_key: str = "Time") -> d
         unsorted.append(d)
 
     # Sort files by key (default is "Time") value
+    print(f"Sorting loaded labjack files by alignment key: '{alignment_key}'..")
     fixed = list(sorted(unsorted, key=lambda x: x["data"][alignment_key][0]))
 
     for labjack_filedata in fixed:
         for col in cols:
             all_data[col].append(labjack_filedata["data"][col])
 
-    # Turn the data into a numpy arr
+    # Turn the data into a numpy arr, I dont trust pandas/numpy so this is somewhat manual
     for col in cols:
-        all_data[col] = np.array(all_data[col]).reshape(-1)  # Reshape from each labjack file into a single array
+        size = sum(len(v) for v in all_data[col])
+        reshaped = np.full((size,), np.nan)
+        cumsum = 0
+        for idx in range(len(all_data[col])):
+            series = all_data[col][idx].to_numpy()
+            series_size = len(series)
+            reshaped[cumsum:cumsum+series_size] = series
+            cumsum = cumsum + series_size
 
+        all_data[col] = reshaped
+
+    print("Returning concatenated labjack array")
     return all_data  # Returns something like {"Time": <np.array>, "v0": ..., ...}

@@ -120,7 +120,8 @@ def drifting_grating_enrichment_testing():
 
     enrich = DriftingGratingLabjackEnrichment(Path().glob("data/anna/driftingGratingMetadata-*.txt"), Path().glob("data/anna/labjack/*.dat"))
 
-    # matches = list(filter(re.compile("([^\d\s])*_([7-9]|1[0-2])\.dat").match, [str(v) for v in Path().glob("data/anna/labjack/*.dat")]))
+    # Only load labjack files 7 8 9 10 11 12
+    # matches = list(filter(re.compile(r"([^\d\s])*_([7-9]|1[0-2])\.dat").match, [str(v) for v in Path().glob("data/anna/labjack/*.dat")]))
     # enrich = DriftingGratingLabjackEnrichment(Path().glob("data/anna/driftingGratingMetadata-*.txt"), matches)
 
     sess = NWBSession("predicted.nwb")
@@ -243,5 +244,5 @@ if __name__ == "__main__":
     # timestamp_filepath = "20241112_unitR2_session001_rightCam_timestamps.txt"
     # drifting_grating_filepath = ""
 
-    main(dlc_filepath, timestamp_filepath, drifting_grating_filepath)
-    # drifting_grating_enrichment_testing()
+    # main(dlc_filepath, timestamp_filepath, drifting_grating_filepath)
+    drifting_grating_enrichment_testing()

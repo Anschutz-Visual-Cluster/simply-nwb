@@ -27,9 +27,6 @@ class NWBSession(object):
             self._nwb_fp = NWBHDF5IO(filename_or_nwbobj)
             self.nwb = self._nwb_fp.read()
 
-        logging.basicConfig(level=logging.INFO)
-        self.logger = logging.getLogger("NWBSession")
-
         self.__builtin_enrichments: dict[str, Enrichment.__class__] = discover_enrichments()  # str: EnrichmentClass
         if custom_enrichments is not None:
             for cust in custom_enrichments:

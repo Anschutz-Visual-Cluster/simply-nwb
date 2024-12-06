@@ -1,3 +1,5 @@
+import types
+
 import numpy as np
 
 from simply_nwb.pipeline import Enrichment, NWBValueMapping
@@ -13,12 +15,19 @@ Use me as a starter point to make your own enrichment
 # TODO find an ideal session to test on
 # TODO Create graph code for analyzing the labjack data
 class DriftingGratingEnrichment(Enrichment):
-    def __init__(self, drifting_grating_metadata_filenames, drifting_kwargs={}, drifting_grating_filename_str: str = "filename"):
+    def __init__(self, drifting_grating_metadata_filenames, drifting_kwargs={}, drifting_grating_filename_str: str = "filename", drifting_timestamp_key: str = "Timestamp"):
         super().__init__(NWBValueMapping({
             "PredictSaccades": EnrichmentReference("PredictSaccades")  # Required that the saccades are already in file
         }))
+        if isinstance(drifting_grating_metadata_filenames, types.GeneratorType):
+            drifting_grating_metadata_filenames = list(drifting_grating_metadata_filenames)
+
+        assert len(drifting_grating_metadata_filenames) > 0, "Must provide at least one driftingGratingMetadata.txt file!"
+
         self.drifting_grating_filename_str = drifting_grating_filename_str
         self.meta = drifting_grating_metadata_read_from_filelist(drifting_grating_metadata_filenames, **drifting_kwargs)
+        self.drifting_timestamp_key = drifting_timestamp_key
+
         tw = 2
 
     def get_video_startstop(self):
@@ -33,7 +42,11 @@ class DriftingGratingEnrichment(Enrichment):
     def _run(self, pynwb_obj):
         video_windows = self.get_video_startstop()
         grating_windows = self.get_gratings_startstop()
-
+        grating_timestamps = self.meta[self.drifting_timestamp_key]
+        if len(grating_timestamps) != len(grating_windows):
+            raise ValueError(f"Number of blocks in the driftingGrating.txt ({len(grating_timestamps)}) files do not match the number of grating windows ({len(grating_windows)})! Could this be malformatted labjack data?")
+        # TODO handle a small number of mismatches between labjack and driftingGrating blocks?
+        
         def process_saccade_epochs(saccade_epoch: np.ndarray):
             # saccade_epoch is a (numsaccade, 2) array for the start/stop of each saccade of a particular type
 
@@ -41,7 +54,11 @@ class DriftingGratingEnrichment(Enrichment):
             # interpolate the fractional frame within the signal's frame
             bins_idxs = np.digitize(saccade_epoch[:, 0], range(video_windows.shape[0]))
             # Convert the frames into absolute timestamps
-            epochstart_framewindows = video_windows[bins_idxs]
+            try:
+                epochstart_framewindows = video_windows[bins_idxs]
+            except IndexError as e:
+                print("Error binning saccades into the video frame windows! Are labjack files missing? This could happen due to a saccade epoch being outside the recorded labjack time!")
+                raise e
 
             # Use the start of the saccade [:, 0] to determine which grating bin it falls within
             # grating_windows[:, 1] is the end (right edge) of the grating bin
@@ -51,12 +68,21 @@ class DriftingGratingEnrichment(Enrichment):
         nasal = self._get_req_val("PredictSaccades.saccades_predicted_nasal_epochs", pynwb_obj)
         temporal = self._get_req_val("PredictSaccades.saccades_predicted_temporal_epochs", pynwb_obj)
 
+        print("Processing nasal saccades..")
         nasal_grating_idxs = process_saccade_epochs(nasal)
+        print("Processing temporal saccades..")
         temporal_grating_idxs = process_saccade_epochs(temporal)
+        # Which grating index does each saccade fall within, used with the grating metadata, we can determine info about each saccade
 
         self._save_val("nasal_grating_idxs", nasal_grating_idxs, pynwb_obj)
         self._save_val("temporal_grating_idxs", temporal_grating_idxs, pynwb_obj)
 
+        # Drifting grating is in terms of pulses, different states of pulses
+        # 1 is start 4 is end, any pulse is a change in 'state'
+        #Block(0, {}, "file1"), Block(1, {}, "file1"), Block(2, {}, "file2",0), Block(3, {}, "file2", 1)
+
+        # Want to check if the difference between blocks in the grating is
+        # similar to the size of the length of the pulses
         # Save the drifting grating metadata
         for k, v in self.meta.items():
             if isinstance(v, str):
@@ -158,26 +184,29 @@ class DriftingGratingLabjackEnrichment(DriftingGratingEnrichment):
     y3 misc analogue signal, per usecase
 
     """
-    def __init__(self,  drifting_grating_metadata_filenames, dat_filenames, drifting_grating_channel="y1", video_frame_channel="y2", drifting_kwargs={}, labjack_kwargs={}):
+    def __init__(self,  drifting_grating_metadata_filenames, dat_filenames, drifting_grating_channel="y1", video_frame_channel="y2", drifting_kwargs={}, labjack_kwargs={}, squarewave_args={}):
         super().__init__(drifting_grating_metadata_filenames, drifting_kwargs=drifting_kwargs)
 
         self.dats = labjack_concat_files(dat_filenames, **labjack_kwargs)
         self.grating_channel = drifting_grating_channel
         self.frames_channel = video_frame_channel
+        self.squarewave_args = squarewave_args
 
     def get_video_startstop(self):
         # Get an array of (time, 2) for the start/stop of the frames
-        # TODO Check for large gaps in frames, raise error
-        return startstop_of_squarewave(self.dats[self.frames_channel])[:, :2]  # Chop off the state value, only want start/stop
+        print("Processing video frame labjack data..")
+        return startstop_of_squarewave(self.dats[self.frames_channel], **self.squarewave_args)[:, :2]  # Chop off the state value, only want start/stop
 
     def get_gratings_startstop(self):
-        # TODO threshold for artifact with multi pulses
         # Filter by rising state
-        # Drifting grating is in terms of pulses, different states of pulses
-        # 1 is start 4 is end, any pulse is a change in 'state'
-        #Block(0, {}, "file1"), Block(1, {}, "file1"), Block(2, {}, "file2",0), Block(3, {}, "file2", 1)
+        print("Processing grating pulses from labjack data..")
+        grating_wave = startstop_of_squarewave(self.dats[self.grating_channel], **self.squarewave_args) # come back as [[start, stop, state], ...]
+        inbetween_idxs = np.where(grating_wave[:, 2] == 1)  # 1 is where wave is went up, duration of pulse
+        inbetweens = grating_wave[inbetween_idxs]
 
-        return startstop_of_squarewave(self.dats[self.grating_channel])[:, :2]  # Chop off state value
+        startstop = inbetweens[:, :2]  # Chop off state with :2
+
+        return startstop
 
     def _run(self, pynwb_obj):
         super()._run(pynwb_obj)

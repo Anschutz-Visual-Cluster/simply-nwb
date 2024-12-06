@@ -47,6 +47,7 @@ def drifting_grating_metadata_read(filename: str, data_to_numpy: bool = True, co
 
     if not os.path.exists(filename):
         raise ValueError(f"File {filename} not found in current working path '{os.getcwd()}'")
+    print(f"Processing '{filename}'..")
 
     with open(filename, "r") as fp:
         filedata = fp.read()
