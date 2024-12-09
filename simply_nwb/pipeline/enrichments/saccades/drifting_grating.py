@@ -77,9 +77,11 @@ class DriftingGratingEnrichment(Enrichment):
         self._save_val("nasal_grating_idxs", nasal_grating_idxs, pynwb_obj)
         self._save_val("temporal_grating_idxs", temporal_grating_idxs, pynwb_obj)
 
+        # TODO grab information about the blocks
         # Drifting grating is in terms of pulses, different states of pulses
-        # 1 is start 4 is end, any pulse is a change in 'state'
-        #Block(0, {}, "file1"), Block(1, {}, "file1"), Block(2, {}, "file2",0), Block(3, {}, "file2", 1)
+        # any pulse is a change in 'state'
+        # 1 is grating (start), 2 is motion, 3 is probe, 4 is ITI (end)
+        #Block(0, {event1,event2,event3,event3,event3, .., event4 }, "file1"), Block(1, {..}, "file1"), Block(2, {..}, "file2"), Block(3, {..}, "file2")
 
         # Want to check if the difference between blocks in the grating is
         # similar to the size of the length of the pulses
@@ -186,6 +188,10 @@ class DriftingGratingLabjackEnrichment(DriftingGratingEnrichment):
     """
     def __init__(self,  drifting_grating_metadata_filenames, dat_filenames, drifting_grating_channel="y1", video_frame_channel="y2", drifting_kwargs={}, labjack_kwargs={}, squarewave_args={}):
         super().__init__(drifting_grating_metadata_filenames, drifting_kwargs=drifting_kwargs)
+
+        if isinstance(dat_filenames, types.GeneratorType):
+            dat_filenames = list(dat_filenames)
+        assert len(dat_filenames) > 0, "List of given labjack filenames is empty!"
 
         self.dats = labjack_concat_files(dat_filenames, **labjack_kwargs)
         self.grating_channel = drifting_grating_channel

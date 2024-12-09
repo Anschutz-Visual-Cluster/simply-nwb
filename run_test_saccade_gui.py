@@ -113,12 +113,12 @@ def graph_saccades(sess: NWBSession):
     tw = 2
 
 
-def drifting_grating_enrichment_testing():
+def drifting_grating_enrichment_testing(folderpath):
     # TODO make the fixes in simply_nwb.pipeline.enrichments.saccades.drifting_grating.py
 
     print("Testing enrichment 'DriftingGratingLabjack'")
 
-    enrich = DriftingGratingLabjackEnrichment(Path().glob("data/anna/driftingGratingMetadata-*.txt"), Path().glob("data/anna/labjack/*.dat"))
+    enrich = DriftingGratingLabjackEnrichment(Path().glob(f"{folderpath}/driftingGratingMetadata-*.txt"), Path().glob(f"{folderpath}/labjack/*.dat"))
 
     # Only load labjack files 7 8 9 10 11 12
     # matches = list(filter(re.compile(r"([^\d\s])*_([7-9]|1[0-2])\.dat").match, [str(v) for v in Path().glob("data/anna/labjack/*.dat")]))
@@ -245,4 +245,4 @@ if __name__ == "__main__":
     # drifting_grating_filepath = ""
 
     # main(dlc_filepath, timestamp_filepath, drifting_grating_filepath)
-    drifting_grating_enrichment_testing()
+    drifting_grating_enrichment_testing("data/restarted_session")
