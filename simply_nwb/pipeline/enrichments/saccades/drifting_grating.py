@@ -21,7 +21,7 @@ class DriftingGratingEnrichment(Enrichment):
         }))
         if isinstance(drifting_grating_metadata_filenames, types.GeneratorType):
             drifting_grating_metadata_filenames = list(drifting_grating_metadata_filenames)
-
+        drifting_kwargs["expand_file_keys"] = True
         assert len(drifting_grating_metadata_filenames) > 0, "Must provide at least one driftingGratingMetadata.txt file!"
 
         self.drifting_grating_filename_str = drifting_grating_filename_str
@@ -44,6 +44,13 @@ class DriftingGratingEnrichment(Enrichment):
         grating_windows = self.get_gratings_startstop()
         grating_timestamps = self.meta[self.drifting_timestamp_key]
         if len(grating_timestamps) != len(grating_windows):
+            # print("=" * 50) # TODO Disable this
+            # print("DISABLE THIS TESTING CODE!!!!!!!!!!!!!!!!!!")
+            # print("=" * 50)
+            # if len(grating_timestamps) > len(grating_windows):
+            #     grating_timestamps = grating_timestamps[:len(grating_windows)]
+            # else:
+            #     grating_windows = grating_windows[:len(grating_timestamps)]
             raise ValueError(f"Number of blocks in the driftingGrating.txt ({len(grating_timestamps)}) files do not match the number of grating windows ({len(grating_windows)})! Could this be malformatted labjack data?")
         # TODO handle a small number of mismatches between labjack and driftingGrating blocks?
         
@@ -77,7 +84,6 @@ class DriftingGratingEnrichment(Enrichment):
         self._save_val("nasal_grating_idxs", nasal_grating_idxs, pynwb_obj)
         self._save_val("temporal_grating_idxs", temporal_grating_idxs, pynwb_obj)
 
-        # TODO grab information about the blocks
         # Drifting grating is in terms of pulses, different states of pulses
         # any pulse is a change in 'state'
         # 1 is grating (start), 2 is motion, 3 is probe, 4 is ITI (end)
@@ -155,21 +161,33 @@ class DriftingGratingEnrichment(Enrichment):
         ]
 
     @staticmethod
-    def nasal_saccade_info(pynwb_obj, saccade_index):
-        return DriftingGratingEnrichment._saccade_info(pynwb_obj, "nasal", saccade_index)
+    def grating_metadata_keys():
+        return ["Baseline contrast", "Motion direction", "Orientation", "Probe contrast", "Probe phase", "Spatial frequency", "Timestamp", "Velocity", "filename"]
 
     @staticmethod
-    def temporal_saccade_info(pynwb_obj, saccade_index):
-        return DriftingGratingEnrichment._saccade_info(pynwb_obj, "temporal", saccade_index)
+    def nasal_saccade_info(pynwb_obj, saccade_index=None):
+        return DriftingGratingEnrichment._saccade_info(pynwb_obj, "nasal", saccade_index, DriftingGratingEnrichment.get_name())
 
     @staticmethod
-    def _saccade_info(pynwb_obj, saccade_name, indexdata):
+    def temporal_saccade_info(pynwb_obj, saccade_index=None):
+        return DriftingGratingEnrichment._saccade_info(pynwb_obj, "temporal", saccade_index, DriftingGratingEnrichment.get_name())
+
+    @staticmethod
+    def _saccade_info(pynwb_obj, saccade_name, indexdata, subname):
         # Get the drifting grating info for a given saccade or list of saccades
         if saccade_name not in ["nasal", "temporal"]:
             raise ValueError(f"Saccadename must be nasal or temporal, got '{saccade_name}'!")
 
-        saccidxs = Enrichment.get_val(DriftingGratingEnrichment.get_name(), f"{saccade_name}_grating_idxs", pynwb_obj)
-        raise NotImplemented  # TODO
+        saccidxs = Enrichment.get_val(subname, f"{saccade_name}_grating_idxs", pynwb_obj)
+        if indexdata is not None:
+            saccidxs = saccidxs[indexdata]
+
+        keys = DriftingGratingEnrichment.grating_metadata_keys()
+        data = {}
+        for k in keys:
+            val = np.array(Enrichment.get_val(subname, k, pynwb_obj).data[:])[saccidxs]
+            data[k] = val
+        return data
 
 
 class DriftingGratingLabjackEnrichment(DriftingGratingEnrichment):
@@ -200,12 +218,12 @@ class DriftingGratingLabjackEnrichment(DriftingGratingEnrichment):
 
     def get_video_startstop(self):
         # Get an array of (time, 2) for the start/stop of the frames
-        print("Processing video frame labjack data..")
+        print("Processing video frame labjack data wave pulses..")
         return startstop_of_squarewave(self.dats[self.frames_channel], **self.squarewave_args)[:, :2]  # Chop off the state value, only want start/stop
 
     def get_gratings_startstop(self):
         # Filter by rising state
-        print("Processing grating pulses from labjack data..")
+        print("Processing grating pulses from labjack data wave pulses..")
         grating_wave = startstop_of_squarewave(self.dats[self.grating_channel], **self.squarewave_args) # come back as [[start, stop, state], ...]
         inbetween_idxs = np.where(grating_wave[:, 2] == 1)  # 1 is where wave is went up, duration of pulse
         inbetweens = grating_wave[inbetween_idxs]
@@ -216,7 +234,8 @@ class DriftingGratingLabjackEnrichment(DriftingGratingEnrichment):
 
     def _run(self, pynwb_obj):
         super()._run(pynwb_obj)
-        # TODO add labjack stuff here
+        for k, v in self.dats.items():
+            self._save_val(k, v, pynwb_obj)
 
     @staticmethod
     def get_name() -> str:
@@ -225,11 +244,30 @@ class DriftingGratingLabjackEnrichment(DriftingGratingEnrichment):
     @staticmethod
     def saved_keys() -> list[str]:
         saved = DriftingGratingEnrichment.saved_keys()
-        # TODO add labjack saved keys here
+        labjack_keys = ["Time", "v0", "v1", "v2", "v3", "y0", "y1", "y2", "y3"]
+        saved.extend(labjack_keys)
         return saved
 
     @staticmethod
     def descriptions() -> dict[str, str]:
         descs = DriftingGratingEnrichment.descriptions()
-        # TODO add labjack descs here
+        descs.update({
+            "Time": "Labjack times array",
+            "v0": "Labjack channel v0 (currently not used)",
+            "v1": "Labjack channel v1 (currently not used)",
+            "v2": "Labjack channel v2 (currently not used)",
+            "v3": "Labjack channel v3 (currently not used)",
+            "y0": "Labjack channel y0 (currently not used)",
+            "y1": "Labjack channel y1, this is the default channel for the drifting grating signal pulses for block alignment",
+            "y2": "Labjack channel y2, this is the default channel for the video recording signal pulse for determining when a frame in the video has been recorded",
+            "y3": "Labjack channel y3 (currently not used)"
+        })
         return descs
+
+    @staticmethod
+    def nasal_saccade_info(pynwb_obj, saccade_index=None):
+        return DriftingGratingEnrichment._saccade_info(pynwb_obj, "nasal", saccade_index, DriftingGratingLabjackEnrichment.get_name())
+
+    @staticmethod
+    def temporal_saccade_info(pynwb_obj, saccade_index=None):
+        return DriftingGratingEnrichment._saccade_info(pynwb_obj, "temporal", saccade_index, DriftingGratingLabjackEnrichment.get_name())

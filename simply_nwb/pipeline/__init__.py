@@ -24,6 +24,7 @@ class NWBSession(object):
             self.nwb = filename_or_nwbobj
             self._nwb_fp = None
         elif isinstance(filename_or_nwbobj, str):
+            print(f"Reading NWB file '{filename_or_nwbobj}'..")
             self._nwb_fp = NWBHDF5IO(filename_or_nwbobj)
             self.nwb = self._nwb_fp.read()
 
@@ -109,6 +110,7 @@ class NWBSession(object):
         for f in funcs:
             if key == f.name:
                 found = True
+                break
 
         if not found:
             raise ValueError(f"Function '{key}' not found in Enrichment '{namespace}' Available functions '{[str(f) for f in funcs]}'")

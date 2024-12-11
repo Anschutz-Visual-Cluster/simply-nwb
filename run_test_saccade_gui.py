@@ -115,17 +115,21 @@ def graph_saccades(sess: NWBSession):
 
 def drifting_grating_enrichment_testing(folderpath):
     # TODO make the fixes in simply_nwb.pipeline.enrichments.saccades.drifting_grating.py
-
+    override = True
+    # override = False
     print("Testing enrichment 'DriftingGratingLabjack'")
-
-    enrich = DriftingGratingLabjackEnrichment(Path().glob(f"{folderpath}/driftingGratingMetadata-*.txt"), Path().glob(f"{folderpath}/labjack/*.dat"))
 
     # Only load labjack files 7 8 9 10 11 12
     # matches = list(filter(re.compile(r"([^\d\s])*_([7-9]|1[0-2])\.dat").match, [str(v) for v in Path().glob("data/anna/labjack/*.dat")]))
     # enrich = DriftingGratingLabjackEnrichment(Path().glob("data/anna/driftingGratingMetadata-*.txt"), matches)
 
-    sess = NWBSession("predicted.nwb")
-    sess.enrich(enrich)
+    if not os.path.exists("drifting.nwb") or override:
+        sess = NWBSession("predicted.nwb")
+        enrich = DriftingGratingLabjackEnrichment(Path().glob(f"{folderpath}/driftingGratingMetadata-*.txt"), Path().glob(f"{folderpath}/labjack/*.dat"))
+        sess.enrich(enrich)
+        sess.save("drifting.nwb")
+    else:
+        sess = NWBSession("drifting.nwb")
 
     print("Description dict:")
     print(sess.description("DriftingGratingLabjack"))
@@ -137,7 +141,9 @@ def drifting_grating_enrichment_testing(folderpath):
     print("Available funcs:")
     sess.print_funclist("DriftingGratingLabjack")
     # eventdata and timestamps align
-
+    num5 = sess.func("DriftingGratingLabjack.nasal_saccade_info")(5)  # Get info about nasal saccade number 5
+    allsacc = sess.func("DriftingGratingLabjack.nasal_saccade_info")()  # Get info about all nasal saccades
+    specific = sess.func("DriftingGratingLabjack.nasal_saccade_info")([1,2,3])  # Get info about a specific subset of saccades
     tw = 2
 
 

@@ -104,7 +104,6 @@ def drifting_grating_metadata_read(filename: str, data_to_numpy: bool = True, co
     cols = [c.strip() for c in cols]
     cols = [c[:-1] if c.endswith(",") else c for c in cols]
 
-    file_line_idx = file_line_idx + 1
     drift_data = data[file_line_idx:]
 
     processed.update({c: [] for c in cols})
@@ -131,12 +130,13 @@ def drifting_grating_metadata_read(filename: str, data_to_numpy: bool = True, co
     return processed
 
 
-def drifting_grating_metadata_read_from_filelist(files: list[str], data_to_numpy: bool = True, columns_key: str = "Columns", max_line_len: int = 100000, alignment_key: str = "Timestamp", filelen_str: str = "file_len", filename_str: str = "filename") -> {str: Union [str, list]}:
+def drifting_grating_metadata_read_from_filelist(files: list[str], data_to_numpy: bool = True, columns_key: str = "Columns", max_line_len: int = 100000, alignment_key: str = "Timestamp", filelen_str: str = "file_len", filename_str: str = "filename", expand_file_keys: bool = False) -> {str: Union [str, list]}:
     """
     Grab a list of labjack files and concat them together into a single data structure.
     Will arrange the data based on an alignment key, defaults to 'Timestamp'
     """
-
+    # Keys to expand
+    # "Baseline contrast", "Orientation", "Spatial frequency", "Velocity", "file_len", "filename"
     unsorted = []
 
     for file in files:
@@ -147,7 +147,7 @@ def drifting_grating_metadata_read_from_filelist(files: list[str], data_to_numpy
 
     sorteddata = sorted(unsorted, key=lambda x: x[alignment_key][0])  # Sort on the first value of the alignment key, ie the first timestamp in the file
 
-    alldata = {filelen_str: []}
+    alldata = {filelen_str: [], columns_key: sorteddata[0][columns_key]}
     current_len = 0  # Current length of the data, used to keep track of which files had which data
     for data in sorteddata:
         datalen = data[filelen_str]
@@ -155,7 +155,7 @@ def drifting_grating_metadata_read_from_filelist(files: list[str], data_to_numpy
         alldata[filelen_str].append(current_len)
 
         for k, v in data.items():
-            if k == filelen_str:
+            if k == filelen_str or k == columns_key:
                 continue
             if k not in alldata:
                 alldata[k] = []
@@ -165,11 +165,16 @@ def drifting_grating_metadata_read_from_filelist(files: list[str], data_to_numpy
             if isinstance(v, list):
                 alldata[k].extend(v)
             else:
-                alldata[k].append(v)
+                if expand_file_keys:
+                    l = []
+                    for _ in range(datalen):
+                        l.append(v)
+                    alldata[k].extend(l)
+                else:
+                    alldata[k].append(v)
 
     # Convert the numerical arrays to numpy
     for k, v in alldata.items():
-        if not isinstance(v[0], str):
-            alldata[k] = np.array(v)
+        alldata[k] = np.array(v)
 
     return alldata
