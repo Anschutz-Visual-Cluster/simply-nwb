@@ -76,7 +76,7 @@ def startstop_of_squarewave(arr: np.ndarray, minval=None, maxval=None, epsilon=.
         threshold = median * warn_on_large_gaps
         large_gap_idxs = np.where(gaps > threshold)[0]
         if len(large_gap_idxs) > 0:
-            warnings.warn(f"WARNING! DETECTED '{len(large_gap_idxs)}' LARGE GAPS BETWEEN PULSES, DATA MAY BE CORRUPTED!")
+            warnings.warn(f"WARNING! DETECTED '{len(large_gap_idxs)}' LARGE GAPS (gaps larger than {warn_on_large_gaps}x the median gap size) BETWEEN PULSES, DATA MAY BE CORRUPTED!")
 
 
     # tmp = np.zeros(len(arr))

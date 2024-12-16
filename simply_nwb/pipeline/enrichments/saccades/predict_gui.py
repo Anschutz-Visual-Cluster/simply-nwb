@@ -72,6 +72,8 @@ class PredictedSaccadeGUIEnrichment(PredictSaccadesEnrichment):
 
         for nwb in self.putat_nwbs:
             putative_waveforms_list.append(Enrichment.get_val("PutativeSaccades", "saccades_putative_waveforms", nwb))
+        if len(self.putat_nwbs) == 0:
+            raise ValueError("Cannot train model without any putative NWB training sets!")
 
         putative_waveforms = np.vstack(putative_waveforms_list)
         putative_idxs = np.random.choice(
