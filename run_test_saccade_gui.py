@@ -241,8 +241,12 @@ if __name__ == "__main__":
     # timestamp_filepath = "data/anna/20241022_unitR2_session003_rightCam_timestamps.txt"
     # drifting_grating_filepath = "data/anna/driftingGratingMetadata-0.txt"
 
-    dlc_filepath = "data/suboptimal/20241029_unitR2_session003_rightCam-0000DLC_resnet50_pupilsizeFeb6shuffle1_1030000.csv"
-    timestamp_filepath = "data/suboptimal/20241029_unitR2_session003_rightCam_timestamps.txt"
+    # dlc_filepath = "data/suboptimal/20241029_unitR2_session003_rightCam-0000DLC_resnet50_pupilsizeFeb6shuffle1_1030000.csv"
+    # timestamp_filepath = "data/suboptimal/20241029_unitR2_session003_rightCam_timestamps.txt"
+    drifting_grating_filepath = ""
+
+    dlc_filepath = "data/extraction/nr1ko/20241023_unitR2_session004_rightCam-0000DLC_resnet50_pupilsizeFeb6shuffle1_1030000.csv"
+    timestamp_filepath = "data/extraction/nr1ko/20241023_unitR2_session004_rightCam_timestamps.txt"
     drifting_grating_filepath = ""
 
     # prefix = ""
@@ -250,5 +254,5 @@ if __name__ == "__main__":
     # timestamp_filepath = "20241112_unitR2_session001_rightCam_timestamps.txt"
     # drifting_grating_filepath = ""
 
-    # main(dlc_filepath, timestamp_filepath, drifting_grating_filepath)
-    drifting_grating_enrichment_testing("data/restarted_session")
+    main(dlc_filepath, timestamp_filepath, drifting_grating_filepath)
+    # drifting_grating_enrichment_testing("data/restarted_session")

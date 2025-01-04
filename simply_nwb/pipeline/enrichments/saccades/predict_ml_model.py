@@ -58,15 +58,23 @@ class PredictSaccadeMLEnrichment(PredictSaccadesEnrichment):
 
         training_x = []  # will be a numpy array of size (240, N) N = training samples given
         training_y = []  # numpy array like (N,) with
+        print("Loading training data..")
         for labeled_csv, timestamps_txt, dlc_csv in training_datas:
             eyepos = eyetracking_load_dlc(dlc_csv)
             labeled = csv_load_dataframe(labeled_csv)  # time,eyepos,nasaltemporal,orig_time (note columns may not be named the same, just assume order is correct
             with open(timestamps_txt, "r") as f:
-                timestamps = [int(t.strip()) for t in f.readlines()]
+                timestamps = {int(t.strip()): idx for idx, t in enumerate(f.readlines())}
+
+
             # TODO extract each training example's x/y positions and likelihoods for each timestamp value in the 'saccade_times.csv'
             # format them all into a matrix
             # generate noisedata/randomly sample eyepositions for noise examples
             # train and then test
+            # startidx = int(next(labeled.iterrows())[1]["time"])
+            # endidx = startidx + 80
+            # data = eyepos[ykey][startidx:endidx].to_numpy()
+            # px.line(data).show()
+            # px.line(sess.to_dict()["PutativeSaccades"]["pose_filtered"][14148:14228][:,0]).show()
             tw = 2
 
 
