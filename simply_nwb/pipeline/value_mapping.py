@@ -47,7 +47,7 @@ class NWBValueMapping(object):
             if isinstance(v, EnrichmentReference):
                 cls = v.get_classtype()
                 name = cls.get_name()
-                for ks in cls.saved_keys():
+                for ks in cls.saved_keys():  # Check that the keys required actually exist
                     self._mapping[f"{name}.{ks}"] = _get_val(name, ks)
             else:
                 if not isinstance(v, list):

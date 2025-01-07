@@ -120,7 +120,7 @@ class PutativeSaccadesEnrichment(Enrichment):
             "pose_decomposed",
             "pose_missing",
             "pose_reoriented",
-            "pose_filtered",
+            "processed_eyepos",
             "saccades_putative_peak_indices",
             "saccades_putative_waveforms",
             "saccades_fps",
@@ -134,15 +134,15 @@ class PutativeSaccadesEnrichment(Enrichment):
     def descriptions() -> dict[str, str]:
         return {
             "raw_x": "x values directly from the DLC csv (time,)",
-            "raw_y":"y values directly from the DLC csv (time,)",
-            "raw_timestamps":"timestamps directly from the timestamps.txt (time,)",
-            "raw_likelihoods":"likelihoods directly from the DLC csv (time,)",
+            "raw_y": "y values directly from the DLC csv (time,)",
+            "raw_timestamps": "timestamps directly from the timestamps.txt (time,)",
+            "raw_likelihoods": "likelihoods directly from the DLC csv (time,)",
             "pose_corrected": "Corrected eye position (time, x/y)",
             "pose_interpolated": "Interpolated eye position (time, x/y)",
             "pose_decomposed": "PCA Imputed eye positions (time, x/y)",
             "pose_missing": "Indexes of missing (nan) position values (time, x/y)",
             "pose_reoriented": "Reoriented positions, so they all start from the same 0 (time, x/y)",
-            "pose_filtered": "Final interpolation and nan filtering of eye position pose_reoriented (time, x/y)",
+            "processed_eyepos": "Final interpolation and nan filtering of eye position pose_reoriented (time, x/y)",
             "saccades_putative_peak_indices": "Index into time of the center (peak velocity) of the saccade (saccadenum,)",
             "saccades_putative_waveforms": "Waveforms of putative saccades (saccadenum, time, x/y)",
             "saccades_fps": "single value list like [fps] with the fps used to calculate eye positions",
@@ -196,7 +196,7 @@ class PutativeSaccadesEnrichment(Enrichment):
         self._save_val("pose_decomposed", decomposed, pynwb_obj)
         self._save_val("pose_missing", missing_data_mask, pynwb_obj)
         self._save_val("pose_reoriented", reoriented, pynwb_obj)
-        self._save_val("pose_filtered", filtered, pynwb_obj)
+        self._save_val("processed_eyepos", filtered, pynwb_obj)
         self._save_val("saccades_putative_peak_indices", saccade_indices, pynwb_obj)
         self._save_val("saccades_putative_waveforms", saccade_waveforms, pynwb_obj)
         self._save_val("saccades_fps", [self.fps], pynwb_obj)

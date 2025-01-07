@@ -124,7 +124,8 @@ def drifting_grating_enrichment_testing(folderpath):
     # enrich = DriftingGratingLabjackEnrichment(Path().glob("data/anna/driftingGratingMetadata-*.txt"), matches)
 
     if not os.path.exists("drifting.nwb") or override:
-        sess = NWBSession("predicted.nwb")
+        # sess = NWBSession("predicted.nwb")
+        sess = NWBSession("putative.nwb")
         enrich = DriftingGratingLabjackEnrichment(Path().glob(f"{folderpath}/driftingGratingMetadata-*.txt"), Path().glob(f"{folderpath}/labjack/*.dat"))
         sess.enrich(enrich)
         sess.save("drifting.nwb")
@@ -214,7 +215,7 @@ def main(dlc_filepath, timestamp_filepath, drifting_grating_filepath):
     # graph_saccades(sess)
 
     # import matplotlib.pyplot as plt
-    # eyepos = sess.pull("PutativeSaccades.pose_filtered")[:, 0]
+    # eyepos = sess.pull("PutativeSaccades.processed_eyepos")[:, 0]
     # fig = plt.plot(eyepos)
     # nasal_peaks = sess.pull("PredictSaccades.saccades_predicted_nasal_peak_indices")
     # temporal_peaks = sess.pull("PredictSaccades.saccades_predicted_temporal_peak_indices")
@@ -254,5 +255,5 @@ if __name__ == "__main__":
     # timestamp_filepath = "20241112_unitR2_session001_rightCam_timestamps.txt"
     # drifting_grating_filepath = ""
 
-    main(dlc_filepath, timestamp_filepath, drifting_grating_filepath)
-    # drifting_grating_enrichment_testing("data/restarted_session")
+    # main(dlc_filepath, timestamp_filepath, drifting_grating_filepath)
+    drifting_grating_enrichment_testing("data/extraction/20241113_unitR2_control001")

@@ -12,23 +12,32 @@ from simply_nwb.transforms import drifting_grating_metadata_read_from_filelist, 
 Use me as a starter point to make your own enrichment
 """
 
-# TODO find an ideal session to test on
 # TODO Create graph code for analyzing the labjack data
+
+
 class DriftingGratingEnrichment(Enrichment):
     def __init__(self, drifting_grating_metadata_filenames, drifting_kwargs={}, drifting_grating_filename_str: str = "filename", drifting_timestamp_key: str = "Timestamp"):
         super().__init__(NWBValueMapping({
             "PredictSaccades": EnrichmentReference("PredictSaccades")  # Required that the saccades are already in file
         }))
+
         if isinstance(drifting_grating_metadata_filenames, types.GeneratorType):
             drifting_grating_metadata_filenames = list(drifting_grating_metadata_filenames)
         drifting_kwargs["expand_file_keys"] = True
         assert len(drifting_grating_metadata_filenames) > 0, "Must provide at least one driftingGratingMetadata.txt file!"
+        self._drifting_grating_metadata_filenames = drifting_grating_metadata_filenames
+        self._drifting_kwargs = drifting_kwargs
 
         self.drifting_grating_filename_str = drifting_grating_filename_str
-        self.meta = drifting_grating_metadata_read_from_filelist(drifting_grating_metadata_filenames, **drifting_kwargs)
+        self._meta = None
         self.drifting_timestamp_key = drifting_timestamp_key
-
         tw = 2
+
+    @property
+    def meta(self):
+        if self._meta is None:
+            self._meta = drifting_grating_metadata_read_from_filelist(self._drifting_grating_metadata_filenames, **self._drifting_kwargs)
+        return self._meta
 
     def get_video_startstop(self):
         # Get an array of (time, 2) for the start/stop of the frames
