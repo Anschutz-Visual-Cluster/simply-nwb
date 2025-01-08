@@ -1,5 +1,7 @@
+import base64
 import os
 import random
+from io import BytesIO
 
 import numpy as np
 from sklearn.neural_network import MLPClassifier
@@ -7,24 +9,35 @@ from sklearn.neural_network import MLPClassifier
 from simply_nwb import SimpleNWB
 from simply_nwb.pipeline import NWBSession
 from simply_nwb.pipeline.enrichments.saccades import PredictSaccadesEnrichment, PutativeSaccadesEnrichment
-from simply_nwb.pipeline.util.saccade_algo.directional import DirectionalClassifier
-from simply_nwb.pipeline.util.saccade_algo.epochs import EpochRegressor, EpochTransformer
 import pickle
 import warnings
+
+from simply_nwb.pipeline.util.models import ModelReader
 from simply_nwb.transforms import eyetracking_load_dlc, csv_load_dataframe
 
 
 class PredictSaccadeMLEnrichment(PredictSaccadesEnrichment):
-    DEFAULT_MODEL_FILENAME = "saccade_extraction_model.pickle"
+    def __init__(self, direction_model=None, epoch_nasal_regressor=None, epoch_temporal_regressor=None, epoch_nasal_classifier=None, epoch_temporal_classifier=None):
+        data = [  # Order matches superclass init arg order
+            [direction_model, "direction_model"],
+            [epoch_temporal_regressor, "epoch_temporal_regressor"],
+            [epoch_temporal_classifier, "epoch_temporal_classifier"],
+            [epoch_nasal_regressor, "epoch_nasal_regressor"],
+            [epoch_nasal_classifier, "epoch_nasal_classifier"]
+        ]
 
-    def __init__(self):
-        super().__init__(
-            PredictSaccadeMLEnrichment._load_model(PredictSaccadeMLEnrichment.DEFAULT_MODEL_FILENAME),
-            EpochRegressor(),
-            EpochTransformer(),
-            EpochRegressor(),
-            EpochTransformer()
-        )
+        args = []
+        for value, name in data:
+            if value is None:
+                value = ModelReader.get_model(name)
+            else:
+                if not isinstance(value, str):  # Assume value passed in is a filename
+                    raise ValueError(f"Invalid arg '{name}' Expected a filepath!")
+                with open(value, "rb") as f:
+                    value = pickle.load(f)
+
+            args.append(value)
+        super().__init__(*args, use_mlp_input=True)
 
     @staticmethod
     def _load_model(filepath):
@@ -36,7 +49,7 @@ class PredictSaccadeMLEnrichment(PredictSaccadesEnrichment):
             return pickle.load(f)
 
     @staticmethod
-    def retrain(training_datas: list[tuple[str, str, str]], xkey="center_x", ykey="center_y", likeli="center_likelihood"):
+    def retrain(training_datas: list[tuple[str, str, str]], save_filename: str, xkey="center_x", ykey="center_y", likeli="center_likelihood", save_to_default_model=False):
         """
         Re-train a model using given a list of training data files like
         [('saccade_times.csv', 'timestamps.csv', dlc.csv'), ...] where each (..) is it's own training dataset
@@ -48,7 +61,8 @@ class PredictSaccadeMLEnrichment(PredictSaccadesEnrichment):
         14148,-1.850164897,1,0
         ...
 
-        'timestamps.txt' and 'dlc.csv' are outputs from DLC, 'dlc.csv' is the eye positions
+        'timestamps.txt' and 'dlc.csv' are outputs from DLC, 'dlc.csv' is the eye positionss
+        save_to_default_model is used to include the model in the package by default, writing to default_model.py file
         """
 
         training_x = []  # will be a numpy array of size (240, N) N = training samples given
@@ -72,9 +86,9 @@ class PredictSaccadeMLEnrichment(PredictSaccadesEnrichment):
             sess.enrich(PutativeSaccadesEnrichment.from_raw(
                 sess.nwb, dlc_csv, timestamps_txt,
                 units=["idx", "px", "px", "likelihood", "px", "px", "likelihood", "px", "px", "likelihood", "px", "px", "likelihood", "px", "px", "likelihood"],
-                x_center="center_x",
-                y_center="center_y",
-                likelihood="center_likelihood"
+                x_center=xkey,
+                y_center=ykey,
+                likelihood=likeli
             ))
             # Process all labeled saccades
             eyepos = sess.pull("PutativeSaccades.processed_eyepos")[:, 0]  # Grab first dim since its x/y
@@ -86,7 +100,9 @@ class PredictSaccadeMLEnrichment(PredictSaccadesEnrichment):
                 startidx = labelval
                 endidx = startidx + 80
 
-                waveform = [*eyepos[startidx:endidx], *likelihoods[startidx:endidx]]
+                # If we wanted to make a model including the likelyhoods, this could be useful
+                # waveform = [*eyepos[startidx:endidx], *likelihoods[startidx:endidx]]
+                waveform = eyepos[startidx:endidx]
                 direction = directions[idx]
 
                 training_x.append(waveform)
@@ -117,20 +133,17 @@ class PredictSaccadeMLEnrichment(PredictSaccadesEnrichment):
 
         clf.out_activation_ = "softmax"
         clf.fit(training_x, training_y)
-        tw = 2
 
-        # TODO extract each training example's x/y positions and likelihoods for each timestamp value in the 'saccade_times.csv'
-        # format them all into a matrix
-        # generate noisedata/randomly sample eyepositions for noise examples
-        # train and then test
-        # startidx = int(next(labeled.iterrows())[1]["time"])
-        # endidx = startidx + 80
-        # data = eyepos[ykey][startidx:endidx].to_numpy()
-        # px.line(data).show()
-        # px.line(sess.to_dict()["PutativeSaccades"]["pose_filtered"][14148:14228][:,0]).show()
-        tw = 2
+        if save_to_default_model:
+            byts = pickle.dumps(clf)
+            b64 = base64.b64encode(byts)
+            with open("default_model.py", "w") as f:
+                f.write(f"MODEL_DATA = {str(b64)}")
+        else:
+            with open(save_filename, "wb") as f:
+                pickle.dump(clf, f)
 
-        raise NotImplementedError
+        return clf
 
     @staticmethod
     def select_noise_waveforms(waveform_windows, eyepos, likelihoods, num_samples):
@@ -157,6 +170,7 @@ class PredictSaccadeMLEnrichment(PredictSaccadesEnrichment):
                     found = True
                     break
             if not found:
-                samples.append([*eyepos[idx:idx+80], *likelihoods[idx:idx+80]])
+                # samples.append([*eyepos[idx:idx+80], *likelihoods[idx:idx+80]])  # TODO include likelihoods?
+                samples.append(eyepos[idx:idx + 80])
                 count = count + 1
 

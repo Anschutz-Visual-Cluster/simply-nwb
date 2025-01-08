@@ -36,6 +36,8 @@ class NWBValueMapping(object):
 
         def _get_val(enrich_name, enrich_ky):
             def func(mynwb):
+                if f"Enrichment.{enrich_name}" not in mynwb.processing:
+                    raise ValueError(f"Required Enrichment '{enrich_name}' not found in NWB! Are you using the right version of the NWB?")
                 if enrich_ky not in mynwb.processing[f"Enrichment.{enrich_name}"].containers:
                     raise KeyError(f"Cannot find key '{enrich_ky}' in the NWB!")
 

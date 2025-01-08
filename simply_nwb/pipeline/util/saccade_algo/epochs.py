@@ -1,5 +1,6 @@
 import pickle
 
+# NOT CURRENTLY USED OR FULLY IMPLEMENTED!!
 
 # Only have an epoch regressor and transformer for backwards compatibility with older code
 class EpochRegressor(object):

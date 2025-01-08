@@ -4,7 +4,7 @@ import plotly.graph_objects as go
 import plotly.subplots
 import scipy
 
-
+# NOT CURRENTLY USED OR FULLY IMPLEMENTED!!
 class DirectionalClassifier(object):
     def is_too_noisy(self, full_wv, print_debug=False, plot_debug=False):
         def doprint(text_to_print):

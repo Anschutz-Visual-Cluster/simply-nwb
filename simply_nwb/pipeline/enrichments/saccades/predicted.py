@@ -6,7 +6,7 @@ from simply_nwb.pipeline.value_mapping import EnrichmentReference
 
 
 class PredictSaccadesEnrichment(Enrichment):
-    def __init__(self, direction_classifier, temporal_epoch_regressor, temporal_epoch_transformer, nasal_epoch_regressor, nasal_epoch_transformer):
+    def __init__(self, direction_classifier, temporal_epoch_regressor, temporal_epoch_transformer, nasal_epoch_regressor, nasal_epoch_transformer, use_mlp_input=False):
         """
         Create a new enrichment for predicting saccades, requires the putative saccades enrichment to run
 
@@ -15,6 +15,7 @@ class PredictSaccadesEnrichment(Enrichment):
         :param temporal_epoch_transformer: Transformer for 'increasing' temporal waveforms
         :param nasal_epoch_regressor: Regressor for 'decreasing' temporal waveforms
         :param nasal_epoch_transformer: Transformer for 'decreasing' temporal waveforms
+        :param use_mlp_input: Use the input length for the multilayer perceptron, size 80, uses eye position instead of velocity to determine direction
         """
         super().__init__(NWBValueMapping({
             "PutativeSaccades": EnrichmentReference("PutativeSaccades")
@@ -24,6 +25,7 @@ class PredictSaccadesEnrichment(Enrichment):
         self._temporal_epoch_transformer = temporal_epoch_transformer
         self._nasal_epoch_regressor = nasal_epoch_regressor
         self._nasal_epoch_transformer = nasal_epoch_transformer
+        self._use_mlp_input = use_mlp_input
 
     @staticmethod
     def get_name() -> str:
@@ -116,8 +118,10 @@ class PredictSaccadesEnrichment(Enrichment):
         indices = indices[idxs]
 
         # Predict -1, 0, or 1
-        pred_labels = self._direction_cls.predict(x_velocities)  # Used for LDA
-        # pred_labels = self._direction_cls.predict(waveforms[:, :, 0])  # Use for DirectionClassifier, TODO use velocities instead?
+        if self._use_mlp_input:
+            pred_labels = self._direction_cls.predict(waveforms[:, :, 0])
+        else:
+            pred_labels = self._direction_cls.predict(x_velocities)  # Used for LDA
 
         return pred_labels, waveforms, indices
 

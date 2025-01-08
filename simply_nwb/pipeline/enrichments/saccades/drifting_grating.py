@@ -8,11 +8,8 @@ from simply_nwb.pipeline.util.waves import startstop_of_squarewave
 from simply_nwb.pipeline.value_mapping import EnrichmentReference
 from simply_nwb.transforms import drifting_grating_metadata_read_from_filelist, labjack_concat_files
 
-"""
-Use me as a starter point to make your own enrichment
-"""
 
-# TODO Create graph code for analyzing the labjack data
+# TODO Create graph code for analyzing the labjack data?
 
 
 class DriftingGratingEnrichment(Enrichment):
@@ -93,13 +90,11 @@ class DriftingGratingEnrichment(Enrichment):
         self._save_val("nasal_grating_idxs", nasal_grating_idxs, pynwb_obj)
         self._save_val("temporal_grating_idxs", temporal_grating_idxs, pynwb_obj)
 
+        # TODO break down by state?
         # Drifting grating is in terms of pulses, different states of pulses
         # any pulse is a change in 'state'
         # 1 is grating (start), 2 is motion, 3 is probe, 4 is ITI (end)
-        #Block(0, {event1,event2,event3,event3,event3, .., event4 }, "file1"), Block(1, {..}, "file1"), Block(2, {..}, "file2"), Block(3, {..}, "file2")
 
-        # Want to check if the difference between blocks in the grating is
-        # similar to the size of the length of the pulses
         # Save the drifting grating metadata
         for k, v in self.meta.items():
             if isinstance(v, str):
@@ -220,10 +215,18 @@ class DriftingGratingLabjackEnrichment(DriftingGratingEnrichment):
             dat_filenames = list(dat_filenames)
         assert len(dat_filenames) > 0, "List of given labjack filenames is empty!"
 
-        self.dats = labjack_concat_files(dat_filenames, **labjack_kwargs)
+        self._dat_filenames = dat_filenames
+        self._labjack_kwargs = labjack_kwargs
+        self._dats = None
         self.grating_channel = drifting_grating_channel
         self.frames_channel = video_frame_channel
         self.squarewave_args = squarewave_args
+
+    @property
+    def dats(self):
+        if self._dats is None:
+            self._dats = labjack_concat_files(self._dat_filenames, **self._labjack_kwargs)
+        return self._dats
 
     def get_video_startstop(self):
         # Get an array of (time, 2) for the start/stop of the frames
@@ -233,7 +236,8 @@ class DriftingGratingLabjackEnrichment(DriftingGratingEnrichment):
     def get_gratings_startstop(self):
         # Filter by rising state
         print("Processing grating pulses from labjack data wave pulses..")
-        grating_wave = startstop_of_squarewave(self.dats[self.grating_channel], **self.squarewave_args) # come back as [[start, stop, state], ...]
+        grating_data = self.dats[self.grating_channel]
+        grating_wave = startstop_of_squarewave(grating_data, **self.squarewave_args) # come back as [[start, stop, state], ...]
         inbetween_idxs = np.where(grating_wave[:, 2] == 1)  # 1 is where wave is went up, duration of pulse
         inbetweens = grating_wave[inbetween_idxs]
 

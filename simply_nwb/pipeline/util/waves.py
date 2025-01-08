@@ -6,7 +6,7 @@ warnings.simplefilter("always", UserWarning)  # Python being fucking stupid and 
 def startstop_of_squarewave(arr: np.ndarray, minval=None, maxval=None, epsilon=.000003, handle_dropped_signal=True, dropped_width=3, warn_on_large_gaps=1.3) -> np.ndarray:
     """
     Take a square wave and find the start and stop times of each pulse, along with the state
-    So a wave lke ⨅__⨅__⨅ would give [(0,1,1),(1,3,0),(3,4,1),(4,5,0)]
+    So a wave lke ⨅__⨅__⨅ would give [(0,1,1),(1,3,0),(3,4,1),(4,6,0),(6,7,1)]
 
 
     :param arr: Array of the squarewave
@@ -69,7 +69,9 @@ def startstop_of_squarewave(arr: np.ndarray, minval=None, maxval=None, epsilon=.
         tw = 2
     result = np.array(startstop)
 
+    # Sanity checks
     base_states = result[np.where(result[:,2] == -1)]
+
     if warn_on_large_gaps is not None:
         gaps = base_states[:, 1] - base_states[:, 0]
         median = np.median(gaps)

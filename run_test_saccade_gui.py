@@ -124,8 +124,8 @@ def drifting_grating_enrichment_testing(folderpath):
     # enrich = DriftingGratingLabjackEnrichment(Path().glob("data/anna/driftingGratingMetadata-*.txt"), matches)
 
     if not os.path.exists("drifting.nwb") or override:
-        # sess = NWBSession("predicted.nwb")
-        sess = NWBSession("putative.nwb")
+        sess = NWBSession("predicted.nwb")
+        # sess = NWBSession("putative.nwb")
         enrich = DriftingGratingLabjackEnrichment(Path().glob(f"{folderpath}/driftingGratingMetadata-*.txt"), Path().glob(f"{folderpath}/labjack/*.dat"))
         sess.enrich(enrich)
         sess.save("drifting.nwb")
@@ -154,9 +154,10 @@ def main(dlc_filepath, timestamp_filepath, drifting_grating_filepath):
     ####
     num_samples = 20  # YOU WILL WANT TO CHANGE THIS TO 100+ FOR ACTUAL USE!
 
+    # if not os.path.exists("putative.nwb"):
+    #     create_putative_nwb(dlc_filepath, timestamp_filepath)
 
-    if not os.path.exists("putative.nwb"):
-        create_putative_nwb(dlc_filepath, timestamp_filepath)
+    create_putative_nwb(dlc_filepath, timestamp_filepath)
 
     sess = NWBSession("putative.nwb")  # Load in the session we would like to enrich to predictive saccades
 
@@ -255,5 +256,5 @@ if __name__ == "__main__":
     # timestamp_filepath = "20241112_unitR2_session001_rightCam_timestamps.txt"
     # drifting_grating_filepath = ""
 
-    # main(dlc_filepath, timestamp_filepath, drifting_grating_filepath)
-    drifting_grating_enrichment_testing("data/extraction/20241113_unitR2_control001")
+    main(dlc_filepath, timestamp_filepath, drifting_grating_filepath)
+    # drifting_grating_enrichment_testing("data/extraction/20241113_unitR2_control001")
