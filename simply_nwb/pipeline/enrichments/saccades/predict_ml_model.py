@@ -123,8 +123,8 @@ class PredictSaccadeMLEnrichment(PredictSaccadesEnrichment):
             activation='tanh',
             solver='adam',
             learning_rate="adaptive",
-            # 80 xpoints + 80y + 80likelihoods = 240 inputs, other layer sizes are arbitrary
-            hidden_layer_sizes=(120, 12, 2),
+            # 80 xpoints
+            hidden_layer_sizes=(80, 12, 2),
             max_iter=10000,
             verbose=True,
             shuffle=True,
