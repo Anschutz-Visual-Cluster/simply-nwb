@@ -39,6 +39,7 @@ def processing_drifting_grating(folderpath):
         )
         sess.enrich(putative)
 
+        # Code to use the interactive GUI for creating a model for determining saccade v noise and epochs
         # predict_enrich = PredictedSaccadeGUIEnrichment(200, ["putative.nwb", "putative.nwb"], 40, putative_kwargs={
         #     # If the features tracked by DLC do not match the default, the names of the coordinates and the likelihoods will have to be overwritten
         #     "x_center": "center_x",

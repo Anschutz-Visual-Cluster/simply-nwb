@@ -28,13 +28,20 @@ class DriftingGratingLabjackEnrichment(DriftingGratingEnrichment):
     y3 misc analogue signal, per usecase
 
     """
-    def __init__(self,  drifting_grating_metadata_filenames, dat_filenames, drifting_grating_channel="y1", video_frame_channel="y2", drifting_kwargs={}, labjack_kwargs={}, squarewave_args={}):
+    def __init__(self,  drifting_grating_metadata_filenames, dat_filenames, drifting_grating_channel="y1", video_frame_channel="y2", drifting_kwargs={}, labjack_kwargs={}, squarewave_args={}, skip_sparse_noise=False):
+        # If skip_sparse_noise is True, will find a gap in the grating signal and truncate up to it, to account for the
+        # sparse noise in the first part of the recording, TODO integrate and parse sparse noise
+
         super().__init__(drifting_grating_metadata_filenames, drifting_kwargs=drifting_kwargs)
 
         if isinstance(dat_filenames, types.GeneratorType):
             dat_filenames = list(dat_filenames)
         assert len(dat_filenames) > 0, "List of given labjack filenames is empty!"
 
+        self.skip_sparse_noise = skip_sparse_noise
+        self._sparse_skip = 0  # Calculated upon labjack load
+        self._sparse_skip_calcd = False  # Sparse value has not been calculated yet (only applicable when skip_sparse_noise=True)
+        self._gratings_startstop = None  # gratings waveform starts and stops, cached
         self._dat_filenames = dat_filenames
         self._labjack_kwargs = labjack_kwargs
         self._dats = None
@@ -46,7 +53,22 @@ class DriftingGratingLabjackEnrichment(DriftingGratingEnrichment):
     def dats(self):
         if self._dats is None:
             self._dats = labjack_concat_files(self._dat_filenames, **self._labjack_kwargs)
-        return self._dats
+            # If we have a sparse noise stimulus in the beginning of the labjack signal, we will want to skip over it
+        if self.skip_sparse_noise:
+            self._sparse_skip = self.find_sparse_noise_offset_value()
+
+        return self._dats[self._sparse_skip:]
+
+    def find_sparse_noise_offset_value(self):
+        if self._sparse_skip_calcd:
+            return self._sparse_skip
+        else:
+            # Calc here
+            tw = 2
+            gratings = self.get_gratings_startstop()
+            self._sparse_skip_calcd = True
+
+        return self._sparse_skip
 
     def get_video_startstop(self):
         # Get an array of (time, 2) for the start/stop of the frames
@@ -56,19 +78,26 @@ class DriftingGratingLabjackEnrichment(DriftingGratingEnrichment):
     def get_gratings_startstop(self):
         # Filter by rising state
         print("Processing grating pulses from labjack data wave pulses..")
-        grating_data = self.dats[self.grating_channel]
-        grating_wave = startstop_of_squarewave(grating_data, **self.squarewave_args) # come back as [[start, stop, state], ...]
-        inbetween_idxs = np.where(grating_wave[:, 2] == 1)  # 1 is where wave is went up, duration of pulse
-        inbetweens = grating_wave[inbetween_idxs]
+        if self._gratings_startstop is None:
+            grating_data = self.dats[self.grating_channel]
+            grating_wave = startstop_of_squarewave(grating_data, **self.squarewave_args) # come back as [[start, stop, state], ...]
+            inbetween_idxs = np.where(grating_wave[:, 2] == 1)  # 1 is where wave is went up, duration of pulse
+            inbetweens = grating_wave[inbetween_idxs]
 
-        startstop = inbetweens[:, :2]  # Chop off state with :2
+            startstop = inbetweens[:, :2]  # Chop off state with :2
+            self._gratings_startstop = startstop
 
-        return startstop
+        return self._gratings_startstop
 
     def _run(self, pynwb_obj):
         super()._run(pynwb_obj)
+        self._save_val("sparse_skip_count", self._sparse_skip, pynwb_obj)
+        sparse = self._sparse_skip
+        self._sparse_skip = 0  # We want to put all the data in the NWB, including the spare noise stim data we skipped
         for k, v in self.dats.items():
             self._save_val(k, v, pynwb_obj)
+
+        self._sparse_skip = sparse
 
     @staticmethod
     def get_name() -> str:
@@ -79,6 +108,7 @@ class DriftingGratingLabjackEnrichment(DriftingGratingEnrichment):
         saved = DriftingGratingEnrichment.saved_keys()
         labjack_keys = ["Time", "v0", "v1", "v2", "v3", "y0", "y1", "y2", "y3"]
         saved.extend(labjack_keys)
+        saved.append("sparse_skip_count")
         return saved
 
     @staticmethod
@@ -93,7 +123,8 @@ class DriftingGratingLabjackEnrichment(DriftingGratingEnrichment):
             "y0": "Labjack channel y0 (currently not used)",
             "y1": "Labjack channel y1, this is the default channel for the drifting grating signal pulses for block alignment",
             "y2": "Labjack channel y2, this is the default channel for the video recording signal pulse for determining when a frame in the video has been recorded",
-            "y3": "Labjack channel y3 (currently not used)"
+            "y3": "Labjack channel y3, if present, keeps track of neuropixels' counting barcode signal)",
+            "sparse_skip_count": "How far into the labjack array (in indexes) does the driftingGrating stimulus starts, used to skip past initial sparse noise data in the labjack"
         })
         return descs
 

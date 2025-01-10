@@ -11,6 +11,8 @@ from simply_nwb.pipeline.enrichments.saccades.predict_gui import PredictedSaccad
 
 import plotly.express as px
 
+from simply_nwb.pipeline.enrichments.saccades.predict_ml_model import PredictSaccadeMLEnrichment
+
 
 def create_nwb():
     # Create the NWB file, TODO Put data in here about mouse and experiment
@@ -134,20 +136,15 @@ def main(dlc_filepath, timestamp_filepath, drifting_grating_filepath):
     # x,y,z
     # will be turned into the keys a_x, b_y, and z_c
     # so you would use {"x_center": "a_x", ..}
-    # Normally for list_of_putative_nwbs_filenames you would want more than one session, this is where the training data
-    #   will be sampled from
-    # fn = "D:\\spencer_data\\putative_nwbs"
-    # l = os.listdir(fn)
-    # putats = [os.path.join(fn, v) for v in l[:5]]
-    # enrich = PredictedSaccadeGUIEnrichment(200, putats, 20, putative_kwargs={})
 
-    # predict_enrich = PredictedSaccadeAlgoEnrichment()  # TODO work on this algorithm, use below enrichment code instead
-    predict_enrich = PredictedSaccadeGUIEnrichment(200, ["putative.nwb", "putative.nwb"], num_samples, putative_kwargs={
+    # Code to use the interactive GUI for creating a model for determining saccade v noise and epochs
+    # predict_enrich = PredictedSaccadeGUIEnrichment(200, ["putative.nwb", "putative.nwb"], num_samples, putative_kwargs={
     # If the features tracked by DLC do not match the default, the names of the coordinates and the likelihoods will have to be overwritten
-        "x_center": "center_x",
-        "y_center": "center_y",
-        "likelihood": "center_likelihood",
-    })
+        # "x_center": "center_x",
+        # "y_center": "center_y",
+        # "likelihood": "center_likelihood",
+    # })
+    predict_enrich = PredictSaccadeMLEnrichment()  # Prebuilt models
 
     # This will open two guis, where you will identify which direction the saccade is, and what the start and stop is
     # when the gui data entry is done, it will begin training the classifier models. The models are saved so if
@@ -171,29 +168,10 @@ if __name__ == "__main__":
     # drifting_grating_enrichment_testing()
     # DOWNLOAD EXAMPLE DATA: https://drive.google.com/file/d/1tQwGY4NG8EC37rE4gxCcxmIGIpxMpVxv/view?usp=sharing
 
-    # Get the filenames for the timestamps.txt and dlc CSV (REPLACE WITH YOUR FILENAMES HERE!")
-    # prefix = "data"
-    # dlc_filepath = os.path.abspath(os.path.join(prefix, "20240410_unitME_session001_rightCam-0000DLC_resnet50_GazerMay24shuffle1_1030000.csv"))
-    # timestamp_filepath = os.path.abspath(os.path.join(prefix, "20240410_unitME_session001_rightCam_timestamps.txt"))
-
-    # dlc_filepath = "data/anna/20241022_unitR2_session003_rightCam-0000DLC_resnet50_pupilsizeFeb6shuffle1_1030000.csv"
-    # timestamp_filepath = "data/anna/20241022_unitR2_session003_rightCam_timestamps.txt"
-    # drifting_grating_filepath = "data/anna/driftingGratingMetadata-0.txt"
-
-    # dlc_filepath = "data/suboptimal/20241029_unitR2_session003_rightCam-0000DLC_resnet50_pupilsizeFeb6shuffle1_1030000.csv"
-    # timestamp_filepath = "data/suboptimal/20241029_unitR2_session003_rightCam_timestamps.txt"
-    drifting_grating_filepath = ""
-
     dlc_filepath = "data/extraction/nr1ko/20241023_unitR2_session004_rightCam-0000DLC_resnet50_pupilsizeFeb6shuffle1_1030000.csv"
     timestamp_filepath = "data/extraction/nr1ko/20241023_unitR2_session004_rightCam_timestamps.txt"
     drifting_grating_filepath = ""
 
-    # prefix = ""
-    # dlc_filepath = "20241112_unitR2_session001_rightCam-0000DLC_resnet50_pupilsizeFeb6shuffle1_1030000.csv"
-    # timestamp_filepath = "20241112_unitR2_session001_rightCam_timestamps.txt"
-    # drifting_grating_filepath = ""
-
-    # main(dlc_filepath, timestamp_filepath, drifting_grating_filepath)
-    # drifting_grating_enrichment_testing("data/extraction/20241113_unitR2_control001")
+    main(dlc_filepath, timestamp_filepath, drifting_grating_filepath)
 
 
