@@ -198,7 +198,9 @@ class PredictedSaccadeGUIEnrichment(PredictSaccadesEnrichment):
         print("MAKE SURE YOU LABEL AT LEAST 5 EPOCHS!!")
         print("="*50)
 
-        if not PredictedSaccadeGUIEnrichment._check_for_pretained_direction_model():
+        found_pretrained = PredictedSaccadeGUIEnrichment._check_for_pretained_direction_model()
+        epoch_models = self._check_for_epoch_models()
+        if not found_pretrained:
             print("Collecting directional training data..")
             direction_userlabeled_waveforms, direction_userlabeled_labels = self._get_direction_gui_traindata()
             print("Generating more training data..")
@@ -209,17 +211,19 @@ class PredictedSaccadeGUIEnrichment(PredictSaccadesEnrichment):
         else:
             self._direction_cls = self.load_pretrained_direction_model()
 
-        print("Predicting directions..")
-        pred_labels, pred_waveforms, pred_sacc_indices = self._predict_saccade_direction(pynwb_obj)
-
-        epoch_models = self._check_for_epoch_models()
         if not epoch_models:
             # Epoch model training
             print("Collecting directional training data..")
-            epoch_userlabeled_waveforms, epoch_userlabeled_epochs, ignorezvalfornow = self._get_epoch_gui_traindata(direction_userlabeled_waveforms, direction_userlabeled_labels)
-            epoch_training_waveforms, epoch_training_epochs = EpochDataGenerator(epoch_userlabeled_waveforms, epoch_userlabeled_epochs).generate()
+            direction_userlabeled_waveforms, direction_userlabeled_labels = self._get_direction_gui_traindata()
+            epoch_userlabeled_waveforms, epoch_userlabeled_epochs, ignorezvalfornow = self._get_epoch_gui_traindata(
+                direction_userlabeled_waveforms, direction_userlabeled_labels)
+            epoch_training_waveforms, epoch_training_epochs = EpochDataGenerator(epoch_userlabeled_waveforms,
+                                                                                 epoch_userlabeled_epochs).generate()
             print("Training models..")
             epoch_models = self._get_epoch_models(epoch_training_waveforms, epoch_training_epochs)
+
+        print("Predicting directions..")
+        pred_labels, pred_waveforms, pred_sacc_indices = self._predict_saccade_direction(pynwb_obj)
 
         self._temporal_epoch_regressor = epoch_models[0]
         self._temporal_epoch_transformer = epoch_models[1]

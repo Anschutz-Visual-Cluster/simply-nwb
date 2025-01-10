@@ -1,20 +1,14 @@
 import logging
 import os
-import re
-from pathlib import Path
 
 import numpy as np
 import pendulum
-from pynwb import NWBHDF5IO
 from pynwb.file import Subject
 from simply_nwb import SimpleNWB
 from simply_nwb.pipeline import NWBSession
 from simply_nwb.pipeline.enrichments.saccades import PutativeSaccadesEnrichment
-from simply_nwb.pipeline.enrichments.saccades.drifting_grating import DriftingGratingLabjackEnrichment
 from simply_nwb.pipeline.enrichments.saccades.predict_gui import PredictedSaccadeGUIEnrichment
-import matplotlib.pyplot as plt
 
-from simply_nwb.pipeline.enrichments.saccades.predicted_algorithm import PredictedSaccadeAlgoEnrichment
 import plotly.express as px
 
 
@@ -113,39 +107,6 @@ def graph_saccades(sess: NWBSession):
     tw = 2
 
 
-def drifting_grating_enrichment_testing(folderpath):
-    # TODO make the fixes in simply_nwb.pipeline.enrichments.saccades.drifting_grating.py
-    override = True
-    # override = False
-    print("Testing enrichment 'DriftingGratingLabjack'")
-
-    # Only load labjack files 7 8 9 10 11 12
-    # matches = list(filter(re.compile(r"([^\d\s])*_([7-9]|1[0-2])\.dat").match, [str(v) for v in Path().glob("data/anna/labjack/*.dat")]))
-    # enrich = DriftingGratingLabjackEnrichment(Path().glob("data/anna/driftingGratingMetadata-*.txt"), matches)
-
-    if not os.path.exists("drifting.nwb") or override:
-        sess = NWBSession("predicted.nwb")
-        # sess = NWBSession("putative.nwb")
-        enrich = DriftingGratingLabjackEnrichment(Path().glob(f"{folderpath}/driftingGratingMetadata-*.txt"), Path().glob(f"{folderpath}/labjack/*.dat"))
-        sess.enrich(enrich)
-        sess.save("drifting.nwb")
-    else:
-        sess = NWBSession("drifting.nwb")
-
-    print("Description dict:")
-    print(sess.description("DriftingGratingLabjack"))
-    print("Available keys:")
-    print(sess.available_keys("DriftingGratingLabjack"))
-    # The long name still works
-    eventdata = sess.pull("DriftingGratingLabjack.Event (1=Grating, 2=Motion, 3=Probe, 4=ITI)")
-    timestamps = sess.pull("DriftingGratingLabjack.Timestamp")
-    print("Available funcs:")
-    sess.print_funclist("DriftingGratingLabjack")
-    # eventdata and timestamps align
-    num5 = sess.func("DriftingGratingLabjack.nasal_saccade_info")(5)  # Get info about nasal saccade number 5
-    allsacc = sess.func("DriftingGratingLabjack.nasal_saccade_info")()  # Get info about all nasal saccades
-    specific = sess.func("DriftingGratingLabjack.nasal_saccade_info")([1,2,3])  # Get info about a specific subset of saccades
-    tw = 2
 
 
 def main(dlc_filepath, timestamp_filepath, drifting_grating_filepath):
@@ -154,11 +115,7 @@ def main(dlc_filepath, timestamp_filepath, drifting_grating_filepath):
     ####
     num_samples = 20  # YOU WILL WANT TO CHANGE THIS TO 100+ FOR ACTUAL USE!
 
-    # if not os.path.exists("putative.nwb"):
-    #     create_putative_nwb(dlc_filepath, timestamp_filepath)
-
     create_putative_nwb(dlc_filepath, timestamp_filepath)
-
     sess = NWBSession("putative.nwb")  # Load in the session we would like to enrich to predictive saccades
 
     print(f"Available funcs from PutativeSaccades:")
@@ -204,28 +161,8 @@ def main(dlc_filepath, timestamp_filepath, drifting_grating_filepath):
     sess.enrich(predict_enrich)
     print("Saving predicted..")
     sess.save("predicted.nwb")  # Save as our finalized session, ready for analysis
-    #
-    # print("Adding drifting grating data..")
-    # drift_enrich = DriftingGratingLabjackEnrichment(drifting_grating_filepath)
-    # sess.enrich(drift_enrich)
-    # sess.save("drifting.nwb")
-    #
-    # epochs = sess.to_dict()["PredictSaccades"]["saccades_predicted_temporal_epochs"]
-    # ts = sess.to_dict()["DriftingGrating"]["Timestamp"]
 
-    # graph_saccades(sess)
-
-    # import matplotlib.pyplot as plt
-    # eyepos = sess.pull("PutativeSaccades.processed_eyepos")[:, 0]
-    # fig = plt.plot(eyepos)
-    # nasal_peaks = sess.pull("PredictSaccades.saccades_predicted_nasal_peak_indices")
-    # temporal_peaks = sess.pull("PredictSaccades.saccades_predicted_temporal_peak_indices")
-    # for nas in nasal_peaks:
-    #     plt.vlines(nas, 95, 120, color="blue")
-    # for tmp in temporal_peaks:
-    #     plt.vlines(tmp, 95, 120, color="orange")
-    # plt.show()
-
+    graph_saccades(sess)
     tw = 2
 
 
@@ -256,5 +193,7 @@ if __name__ == "__main__":
     # timestamp_filepath = "20241112_unitR2_session001_rightCam_timestamps.txt"
     # drifting_grating_filepath = ""
 
-    main(dlc_filepath, timestamp_filepath, drifting_grating_filepath)
+    # main(dlc_filepath, timestamp_filepath, drifting_grating_filepath)
     # drifting_grating_enrichment_testing("data/extraction/20241113_unitR2_control001")
+
+

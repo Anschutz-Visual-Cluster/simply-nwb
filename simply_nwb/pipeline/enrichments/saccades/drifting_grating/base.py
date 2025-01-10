@@ -1,4 +1,5 @@
 import types
+import warnings
 
 import numpy as np
 
@@ -10,10 +11,11 @@ from simply_nwb.transforms import drifting_grating_metadata_read_from_filelist, 
 
 
 # TODO Create graph code for analyzing the labjack data?
-
+# Superclass for driftingGrating processing
 
 class DriftingGratingEnrichment(Enrichment):
-    def __init__(self, drifting_grating_metadata_filenames, drifting_kwargs={}, drifting_grating_filename_str: str = "filename", drifting_timestamp_key: str = "Timestamp"):
+    def __init__(self, drifting_grating_metadata_filenames, drifting_kwargs={},
+                 drifting_grating_filename_str: str = "filename", drifting_timestamp_key: str = "Timestamp"):
         super().__init__(NWBValueMapping({
             "PredictSaccades": EnrichmentReference("PredictSaccades")  # Required that the saccades are already in file
         }))
@@ -21,7 +23,8 @@ class DriftingGratingEnrichment(Enrichment):
         if isinstance(drifting_grating_metadata_filenames, types.GeneratorType):
             drifting_grating_metadata_filenames = list(drifting_grating_metadata_filenames)
         drifting_kwargs["expand_file_keys"] = True
-        assert len(drifting_grating_metadata_filenames) > 0, "Must provide at least one driftingGratingMetadata.txt file!"
+        assert len(
+            drifting_grating_metadata_filenames) > 0, "Must provide at least one driftingGratingMetadata.txt file!"
         self._drifting_grating_metadata_filenames = drifting_grating_metadata_filenames
         self._drifting_kwargs = drifting_kwargs
 
@@ -31,9 +34,10 @@ class DriftingGratingEnrichment(Enrichment):
         tw = 2
 
     @property
-    def meta(self):
+    def meta(self):  # Put long loading attributes in a @property tag so they don't load until .run()
         if self._meta is None:
-            self._meta = drifting_grating_metadata_read_from_filelist(self._drifting_grating_metadata_filenames, **self._drifting_kwargs)
+            self._meta = drifting_grating_metadata_read_from_filelist(self._drifting_grating_metadata_filenames,
+                                                                      **self._drifting_kwargs)
         return self._meta
 
     def get_video_startstop(self):
@@ -57,9 +61,11 @@ class DriftingGratingEnrichment(Enrichment):
             #     grating_timestamps = grating_timestamps[:len(grating_windows)]
             # else:
             #     grating_windows = grating_windows[:len(grating_timestamps)]
-            raise ValueError(f"Number of blocks in the driftingGrating.txt ({len(grating_timestamps)}) files do not match the number of grating windows ({len(grating_windows)})! Could this be malformatted labjack data?")
+            raise ValueError(
+                f"Number of blocks in the driftingGrating.txt ({len(grating_timestamps)}) files do not match the number of grating windows ({len(grating_windows)})! Could this be malformatted labjack data?")
+
         # TODO handle a small number of mismatches between labjack and driftingGrating blocks?
-        
+
         def process_saccade_epochs(saccade_epoch: np.ndarray):
             # saccade_epoch is a (numsaccade, 2) array for the start/stop of each saccade of a particular type
 
@@ -70,12 +76,17 @@ class DriftingGratingEnrichment(Enrichment):
             try:
                 epochstart_framewindows = video_windows[bins_idxs]
             except IndexError as e:
-                print("Error binning saccades into the video frame windows! Are labjack files missing? This could happen due to a saccade epoch being outside the recorded labjack time!")
+                print(
+                    "Error binning saccades into the video frame windows! Are labjack files missing? This could happen due to a saccade epoch being outside the recorded labjack time!")
                 raise e
 
             # Use the start of the saccade [:, 0] to determine which grating bin it falls within
             # grating_windows[:, 1] is the end (right edge) of the grating bin
-            epoch_grating_idxs = np.digitize(epochstart_framewindows[:, 0], grating_windows[:, 1], right=True)
+            epoch_grating_idxs = np.digitize(epochstart_framewindows[:, 0], grating_windows[:, 1])
+            if max(epoch_grating_idxs) >= len(grating_windows):
+                warnings.warn(
+                    "Warning: Some detected saccades are outside of the driftingGratings! Indexes outside of this will return None!")
+
             return epoch_grating_idxs
 
         nasal = self._get_req_val("PredictSaccades.saccades_predicted_nasal_epochs", pynwb_obj)
@@ -152,7 +163,8 @@ class DriftingGratingEnrichment(Enrichment):
             FuncInfo(
                 "nasal_saccade_info",
                 "Get information about a given saccade by index",
-                {"saccade_index": "Index of the saccade, if a list indexes is passed will return a list of info for each element"},
+                {
+                    "saccade_index": "Index of the saccade, if a list indexes is passed will return a list of info for each element"},
                 "nasal_saccade_info([45, 89]) #Gets info about nasal saccade 45 and 89"
             ),
             FuncInfo(
@@ -166,15 +178,18 @@ class DriftingGratingEnrichment(Enrichment):
 
     @staticmethod
     def grating_metadata_keys():
-        return ["Baseline contrast", "Motion direction", "Orientation", "Probe contrast", "Probe phase", "Spatial frequency", "Timestamp", "Velocity", "filename"]
+        return ["Baseline contrast", "Motion direction", "Orientation", "Probe contrast", "Probe phase",
+                "Spatial frequency", "Timestamp", "Velocity", "filename"]
 
     @staticmethod
     def nasal_saccade_info(pynwb_obj, saccade_index=None):
-        return DriftingGratingEnrichment._saccade_info(pynwb_obj, "nasal", saccade_index, DriftingGratingEnrichment.get_name())
+        return DriftingGratingEnrichment._saccade_info(pynwb_obj, "nasal", saccade_index,
+                                                       DriftingGratingEnrichment.get_name())
 
     @staticmethod
     def temporal_saccade_info(pynwb_obj, saccade_index=None):
-        return DriftingGratingEnrichment._saccade_info(pynwb_obj, "temporal", saccade_index, DriftingGratingEnrichment.get_name())
+        return DriftingGratingEnrichment._saccade_info(pynwb_obj, "temporal", saccade_index,
+                                                       DriftingGratingEnrichment.get_name())
 
     @staticmethod
     def _saccade_info(pynwb_obj, saccade_name, indexdata, subname):
@@ -183,104 +198,28 @@ class DriftingGratingEnrichment(Enrichment):
             raise ValueError(f"Saccadename must be nasal or temporal, got '{saccade_name}'!")
 
         saccidxs = Enrichment.get_val(subname, f"{saccade_name}_grating_idxs", pynwb_obj)
+        singular = False
         if indexdata is not None:
             saccidxs = saccidxs[indexdata]
-
+            if isinstance(saccidxs, int) or isinstance(saccidxs, np.integer):
+                saccidxs = [saccidxs]
+                singular = True
         keys = DriftingGratingEnrichment.grating_metadata_keys()
         data = {}
+        warned = False
         for k in keys:
-            val = np.array(Enrichment.get_val(subname, k, pynwb_obj).data[:])[saccidxs]
-            data[k] = val
+            val = np.array(Enrichment.get_val(subname, k, pynwb_obj).data[:])
+            ll = []
+            for saccidx in saccidxs:
+                if saccidx >= len(val):
+                    if not warned:
+                        warnings.warn("A saccade is outside of driftingGrating! Will return None!")
+                        warned = True
+                    ll.append(None)
+                else:
+                    ll.append(val[saccidx])
+            if singular:
+                ll = ll[0]
+            data[k] = ll
         return data
 
-
-class DriftingGratingLabjackEnrichment(DriftingGratingEnrichment):
-    """
-    Enrich the saccade data with metadata about the drifting grating using labjack as the global clock
-
-    Default labjack signal mapping is as follows
-    y0 'barcode' of a count
-    y1 default drifting grating event happened, align driftingGrating-0.txt, starts at zero, goes to 1
-    Assumes that the first 'pulse' in the labjack data corresponds to the first event in the driftingGrating-0.txt
-
-    y2 video camera timing acquisition frame, timestamps for video frames
-    a frame is 0 or 1, each time it flips is a new frame, 0 to 1, 1 to 0 etc..
-    y3 misc analogue signal, per usecase
-
-    """
-    def __init__(self,  drifting_grating_metadata_filenames, dat_filenames, drifting_grating_channel="y1", video_frame_channel="y2", drifting_kwargs={}, labjack_kwargs={}, squarewave_args={}):
-        super().__init__(drifting_grating_metadata_filenames, drifting_kwargs=drifting_kwargs)
-
-        if isinstance(dat_filenames, types.GeneratorType):
-            dat_filenames = list(dat_filenames)
-        assert len(dat_filenames) > 0, "List of given labjack filenames is empty!"
-
-        self._dat_filenames = dat_filenames
-        self._labjack_kwargs = labjack_kwargs
-        self._dats = None
-        self.grating_channel = drifting_grating_channel
-        self.frames_channel = video_frame_channel
-        self.squarewave_args = squarewave_args
-
-    @property
-    def dats(self):
-        if self._dats is None:
-            self._dats = labjack_concat_files(self._dat_filenames, **self._labjack_kwargs)
-        return self._dats
-
-    def get_video_startstop(self):
-        # Get an array of (time, 2) for the start/stop of the frames
-        print("Processing video frame labjack data wave pulses..")
-        return startstop_of_squarewave(self.dats[self.frames_channel], **self.squarewave_args)[:, :2]  # Chop off the state value, only want start/stop
-
-    def get_gratings_startstop(self):
-        # Filter by rising state
-        print("Processing grating pulses from labjack data wave pulses..")
-        grating_data = self.dats[self.grating_channel]
-        grating_wave = startstop_of_squarewave(grating_data, **self.squarewave_args) # come back as [[start, stop, state], ...]
-        inbetween_idxs = np.where(grating_wave[:, 2] == 1)  # 1 is where wave is went up, duration of pulse
-        inbetweens = grating_wave[inbetween_idxs]
-
-        startstop = inbetweens[:, :2]  # Chop off state with :2
-
-        return startstop
-
-    def _run(self, pynwb_obj):
-        super()._run(pynwb_obj)
-        for k, v in self.dats.items():
-            self._save_val(k, v, pynwb_obj)
-
-    @staticmethod
-    def get_name() -> str:
-        return "DriftingGratingLabjack"
-
-    @staticmethod
-    def saved_keys() -> list[str]:
-        saved = DriftingGratingEnrichment.saved_keys()
-        labjack_keys = ["Time", "v0", "v1", "v2", "v3", "y0", "y1", "y2", "y3"]
-        saved.extend(labjack_keys)
-        return saved
-
-    @staticmethod
-    def descriptions() -> dict[str, str]:
-        descs = DriftingGratingEnrichment.descriptions()
-        descs.update({
-            "Time": "Labjack times array",
-            "v0": "Labjack channel v0 (currently not used)",
-            "v1": "Labjack channel v1 (currently not used)",
-            "v2": "Labjack channel v2 (currently not used)",
-            "v3": "Labjack channel v3 (currently not used)",
-            "y0": "Labjack channel y0 (currently not used)",
-            "y1": "Labjack channel y1, this is the default channel for the drifting grating signal pulses for block alignment",
-            "y2": "Labjack channel y2, this is the default channel for the video recording signal pulse for determining when a frame in the video has been recorded",
-            "y3": "Labjack channel y3 (currently not used)"
-        })
-        return descs
-
-    @staticmethod
-    def nasal_saccade_info(pynwb_obj, saccade_index=None):
-        return DriftingGratingEnrichment._saccade_info(pynwb_obj, "nasal", saccade_index, DriftingGratingLabjackEnrichment.get_name())
-
-    @staticmethod
-    def temporal_saccade_info(pynwb_obj, saccade_index=None):
-        return DriftingGratingEnrichment._saccade_info(pynwb_obj, "temporal", saccade_index, DriftingGratingLabjackEnrichment.get_name())
