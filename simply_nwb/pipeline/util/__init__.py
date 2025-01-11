@@ -64,3 +64,38 @@ def smooth_flat_arr(arr, window_size=5, window_type='hanning'):
     a2 = centered
     return a2
 
+
+class SkippedListDict(object):
+    def __init__(self, data: dict[str, list], skip_idx: int):
+        self.data = data
+        self.skip_idx = skip_idx
+
+    def __getitem__(self, item):
+        return self.data[item][self.skip_idx:]
+
+
+# class LazyLoadObj(object):
+#     def __init__(self, cls, *args, **kwargs):
+#         self._asdf_asdf_args = args
+#         self._asdf_asdf_kwargs = kwargs
+#         self._asdf_asdf_cls = cls
+#         self._asdf_asdf_instance = None
+#
+#     def __getattribute__(self, name):
+#         if name.startswith("_asdf_asdf_"):
+#             return object.__getattribute__(self, name)
+#         object.__getattribute__(self, "_asdf_asdf_load")()
+#         return object.__getattribute__(object.__getattribute__(self, "_asdf_asdf_instance"), name)
+#
+#     def _asdf_asdf_load(self):
+#         inst = object.__getattribute__(self, "_asdf_asdf_instance")
+#         if inst is None:
+#             cls = object.__getattribute__(self, "_asdf_asdf_cls")
+#             args = object.__getattribute__(self, "_asdf_asdf_args")
+#             kwargs = object.__getattribute__(self, "_asdf_asdf_kwargs")
+#             object.__setattr__(self, "_asdf_asdf_instance", cls(*args, **kwargs))
+#
+#
+# def load_lazy_obj(obj: LazyLoadObj):
+#     obj._asdf_asdf_load()
+#     return obj._asdf_asdf_instance

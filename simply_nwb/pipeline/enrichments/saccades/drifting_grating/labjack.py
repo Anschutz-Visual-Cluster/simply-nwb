@@ -6,6 +6,7 @@ import numpy as np
 from simply_nwb.pipeline import Enrichment, NWBValueMapping
 from simply_nwb.pipeline.enrichments.saccades.drifting_grating.base import DriftingGratingEnrichment
 from simply_nwb.pipeline.funcinfo import FuncInfo
+from simply_nwb.pipeline.util import SkippedListDict
 from simply_nwb.pipeline.util.waves import startstop_of_squarewave
 from simply_nwb.pipeline.value_mapping import EnrichmentReference
 from simply_nwb.transforms import drifting_grating_metadata_read_from_filelist, labjack_concat_files
@@ -38,8 +39,10 @@ class DriftingGratingLabjackEnrichment(DriftingGratingEnrichment):
             dat_filenames = list(dat_filenames)
         assert len(dat_filenames) > 0, "List of given labjack filenames is empty!"
 
+        self._sparse_init = False
         self.skip_sparse_noise = skip_sparse_noise
-        self._sparse_skip = 0  # Calculated upon labjack load
+        self._sparse_skip = None  # Calculated upon labjack load
+        self._force_load_dats = False
         self._sparse_skip_calcd = False  # Sparse value has not been calculated yet (only applicable when skip_sparse_noise=True)
         self._gratings_startstop = None  # gratings waveform starts and stops, cached
         self._dat_filenames = dat_filenames
@@ -49,23 +52,51 @@ class DriftingGratingLabjackEnrichment(DriftingGratingEnrichment):
         self.frames_channel = video_frame_channel
         self.squarewave_args = squarewave_args
 
+    def __setattr__(self, key, value):
+        if key == "_sparse_skip":
+            if not self._sparse_init:
+                super().__setattr__("_sparse_skip", value)
+                super().__setattr__("_sparse_init", True)
+                return
+
+            assert isinstance(value, int), "Cannot set sparse_skip value to a non-integer!"
+            super().__setattr__("_sparse_skip", value)
+            self.dats.skip_idx = value
+
+        else:
+            super().__setattr__(key, value)
+
     @property
     def dats(self):
-        if self._dats is None:
-            self._dats = labjack_concat_files(self._dat_filenames, **self._labjack_kwargs)
-            # If we have a sparse noise stimulus in the beginning of the labjack signal, we will want to skip over it
-        if self.skip_sparse_noise:
+        if self.skip_sparse_noise and not self._force_load_dats:
+            self._force_load_dats = True
+            self._sparse_skip = 0
             self._sparse_skip = self.find_sparse_noise_offset_value()
 
-        return self._dats[self._sparse_skip:]
+        if self._dats is None:
+            self._dats = SkippedListDict(labjack_concat_files(self._dat_filenames, **self._labjack_kwargs), self._sparse_skip)
+            # If we have a sparse noise stimulus in the beginning of the labjack signal, we will want to skip over it
 
-    def find_sparse_noise_offset_value(self):
-        if self._sparse_skip_calcd:
+        self._dats.skip_idx = self._sparse_skip
+        return self._dats
+
+    def find_sparse_noise_offset_value(self, recalculate=False):
+        if self._sparse_skip_calcd and not recalculate:
             return self._sparse_skip
         else:
             # Calc here
             tw = 2
             gratings = self.get_gratings_startstop()
+            first_signal = int(gratings[0][0])  # First time the signal appears, then want to continue until a gap shows
+            # TODO figure out where to start, based off gap? multiple gaps..
+            self._sparse_skip = first_signal
+            # count = 0
+            # running_sum = 0
+            # for idx in range(len(gratings)):
+            #     if idx == 0:
+            #         idx = 1
+            #     gap_to_previous = gratings
+
             self._sparse_skip_calcd = True
 
         return self._sparse_skip
