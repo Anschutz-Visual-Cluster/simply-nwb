@@ -54,9 +54,10 @@ class DriftingGratingEnrichment(Enrichment):
         grating_windows = self.get_gratings_startstop()
         grating_timestamps = self.meta[self.drifting_timestamp_key]
         if len(grating_timestamps) != len(grating_windows):
-            # print("=" * 50) # TODO Disable this
+            # print("=" * 50)
             # print("DISABLE THIS TESTING CODE!!!!!!!!!!!!!!!!!!")
             # print("=" * 50)
+            # time.sleep(10)
             # if len(grating_timestamps) > len(grating_windows):
             #     grating_timestamps = grating_timestamps[:len(grating_windows)]
             # else:
@@ -76,7 +77,7 @@ class DriftingGratingEnrichment(Enrichment):
             try:
                 epochstart_framewindows = video_windows[bins_idxs]
             except IndexError as e:
-                print(
+                self.logger.info(
                     "Error binning saccades into the video frame windows! Are labjack files missing? This could happen due to a saccade epoch being outside the recorded labjack time!")
                 raise e
 
@@ -92,14 +93,17 @@ class DriftingGratingEnrichment(Enrichment):
         nasal = self._get_req_val("PredictSaccades.saccades_predicted_nasal_epochs", pynwb_obj)
         temporal = self._get_req_val("PredictSaccades.saccades_predicted_temporal_epochs", pynwb_obj)
 
-        print("Processing nasal saccades..")
+        self.logger.info("Processing nasal saccades..")
         nasal_grating_idxs = process_saccade_epochs(nasal)
-        print("Processing temporal saccades..")
+        self.logger.info("Processing temporal saccades..")
         temporal_grating_idxs = process_saccade_epochs(temporal)
         # Which grating index does each saccade fall within, used with the grating metadata, we can determine info about each saccade
 
         self._save_val("nasal_grating_idxs", nasal_grating_idxs, pynwb_obj)
         self._save_val("temporal_grating_idxs", temporal_grating_idxs, pynwb_obj)
+        self._save_val("video_windows", video_windows, pynwb_obj)
+        self._save_val("grating_windows", grating_windows, pynwb_obj)
+        self._save_val("drifting_grating_timestamp_keyname", [self.drifting_timestamp_key], pynwb_obj)
 
         # TODO break down by state?
         # Drifting grating is in terms of pulses, different states of pulses
@@ -134,7 +138,10 @@ class DriftingGratingEnrichment(Enrichment):
             "Motion direction",
             "Probe contrast",
             "Probe phase",
-            "Timestamp"
+            "Timestamp",
+            "video_windows",
+            "grating_windows",
+            "drifting_grating_timestamp_keyname"
         ]
 
     @staticmethod
@@ -153,7 +160,10 @@ class DriftingGratingEnrichment(Enrichment):
             "Motion direction": "Motion direction",
             "Probe contrast": "Contrast number",
             "Probe phase": "Phase number",
-            "Timestamp": "Timestamp value"
+            "Timestamp": "Timestamp value",
+            "video_windows": "Array of size (N,2) where N is the number of frames, and 2 is the start and stop of each frame",
+            "grating_windows": "Array of size (N,2) where N is the number of grating signals, and 2 is the start and stop of each signal",
+            "drifting_grating_timestamp_keyname": "Name of the key used for the timestamps in the driftingGratingMetadata.txt file, defaults to 'Timestamp'"
         }
 
     @staticmethod

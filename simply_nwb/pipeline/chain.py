@@ -4,6 +4,23 @@ from simply_nwb.pipeline import Enrichment, NWBSession
 # from simply_nwb.pipeline.util import LazyLoadObj, load_lazy_obj
 
 
+class _SessionContainer(object):
+    def __init__(self, cls, *args):
+        self.cls = cls
+        self.args = args
+        self._sess = None
+
+    @staticmethod
+    def from_existing(sess):
+        c = _SessionContainer(None, None)
+        c._sess = sess
+        return c
+
+    def get(self):
+        if self._sess is None:
+            self._sess = self.cls(*self.args)
+        return self._sess
+
 class PipelineChain(object):
     def __init__(self, enrichs: list[Enrichment], save_base_name: str, save_checkpoints=True, skip_existing=True):
         """
@@ -18,6 +35,7 @@ class PipelineChain(object):
 
     def run(self, sess: NWBSession):
         print(f"Starting Enrichment chain of size '{len(self.enrichs)}'")
+        sess = _SessionContainer.from_existing(sess)
 
         start_idx = 0
         needs_update = False
@@ -29,16 +47,16 @@ class PipelineChain(object):
 
             if self.skip_exist and os.path.exists(name) and not needs_update:
                 start_idx = idx
-                sess = NWBSession(names[start_idx])
-                # sess = LazyLoadObj(NWBSession, names[start_idx])  # TODO Lazy load this
+                sess = _SessionContainer(NWBSession, names[start_idx])
             else:
                 if idx != 0 and self.save:
-                    sess = NWBSession(names[start_idx])  # TODO same here
+                    sess = _SessionContainer(NWBSession, names[start_idx])
                 needs_update = True
-                sess.enrich(enrich)
+                ss = sess.get()
+                ss.enrich(enrich)
                 if self.save:
-                    sess.save(name)
+                    ss.save(name)
                     start_idx = idx
 
         # return load_lazy_obj(sess)  # TODO
-        return sess
+        return sess.get()

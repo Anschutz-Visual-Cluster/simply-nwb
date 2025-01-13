@@ -29,7 +29,7 @@ class PredictSaccadeMLEnrichment(PredictSaccadesEnrichment):
         args = []
         for value, name in data:
             if value is None:
-                value = ModelReader.get_model(name)
+                value = ModelReader.get_model(name)  # TODO Lazy load these
             else:
                 if not isinstance(value, str):  # Assume value passed in is a filename
                     raise ValueError(f"Invalid arg '{name}' Expected a filepath!")

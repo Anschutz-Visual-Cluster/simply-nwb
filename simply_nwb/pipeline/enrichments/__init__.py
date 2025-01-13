@@ -1,5 +1,8 @@
 import logging
+import warnings
 from typing import Any, Callable
+
+from av.video.format import names
 from pynwb import NWBFile, TimeSeries
 
 from simply_nwb import SimpleNWB
@@ -7,10 +10,18 @@ from simply_nwb.pipeline.funcinfo import FuncInfo
 from simply_nwb.pipeline.value_mapping import NWBValueMapping
 
 
+class _PrintLogger(object):
+    def __init__(self, name):
+        self.name = name
+
+    def info(self, msg):
+        print(f"[{self.name}] {msg}")
+
+
 class Enrichment(object):
     def __init__(self, required_vals_map: NWBValueMapping):
         self._required_vals_map = required_vals_map
-        self.logger = logging.getLogger(self.get_name())
+        self.logger = _PrintLogger(self.get_name())
 
     def validate(self, pynwb_obj):
         enrichment_name = self.get_name()
@@ -18,7 +29,7 @@ class Enrichment(object):
             try:
                 self._get_req_val(k, pynwb_obj)
             except Exception as e:
-                print(f"Unable to find required key '{k}' for enrichment '{enrichment_name}' Error: '{str(e)}'")
+                self.logger.info(f"Unable to find required key '{k}' for enrichment '{enrichment_name}' Error: '{str(e)}'")
                 raise e
 
     def post_validate(self, pynwb_obj):
@@ -31,9 +42,13 @@ class Enrichment(object):
         keys = list(module.containers.keys())
         for key in keys:
             if key not in available_keys:
-                raise ValueError(f"Key '{key}' found, but not defined in enrichment! Defined '{list(available_keys)}' In NWB '{list(keys)}'")
+                warnings.warn(f"Key '{key}' found, but not defined in enrichment! Defined '{list(available_keys)}' In NWB '{list(keys)}'")
             if key not in desc_keys:
-                raise ValueError(f"Key '{key}' not found in descriptions! Defined '{desc_keys}'")
+                txt = f"Key '{key}' not found in descriptions! Defined '{desc_keys}'"
+                if key in available_keys:
+                    raise ValueError(txt)
+                else:
+                    warnings.warn(txt)
 
     def run(self, pynwb_obj):
         self.validate(pynwb_obj)
@@ -81,7 +96,7 @@ class Enrichment(object):
 
         :returns: list of str keynames
         """
-        raise NotImplemented
+        raise NotImplementedError
 
     @staticmethod
     def descriptions() -> dict[str, str]:
@@ -90,14 +105,14 @@ class Enrichment(object):
 
         :returns: Return a dict of the names and descriptions for each saved key
         """
-        raise NotImplemented
+        raise NotImplementedError
 
     @staticmethod
     def get_name() -> str:
         """
         Unique CamelCase name for the enrichment
         """
-        raise NotImplemented
+        raise NotImplementedError
 
     @staticmethod
     def func_list() -> list[FuncInfo]:
@@ -112,5 +127,5 @@ class Enrichment(object):
         Run the enrichment, adding it to the nwb object
         :param pynwb_obj: nwb object to modify
         """
-        raise NotImplemented("Cannot run baseclass! Override in a subclass")
+        raise NotImplementedError("Cannot run baseclass! Override in a subclass")
 

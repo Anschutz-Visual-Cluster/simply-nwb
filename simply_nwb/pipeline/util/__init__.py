@@ -71,7 +71,8 @@ class SkippedListDict(object):
         self.skip_idx = skip_idx
 
     def __getitem__(self, item):
-        return self.data[item][self.skip_idx:]
+        # return self.data[item][self.skip_idx:]
+        return self.data[item]
 
 
 # class LazyLoadObj(object):

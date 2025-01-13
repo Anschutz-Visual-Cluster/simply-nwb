@@ -69,7 +69,7 @@ class DriftingGratingEPhysEnrichment(Enrichment):
         # kp = KilosortProcessor(self.spike_clusters, self.spike_timings)
         # raw_spike_times = kp.calculate_spikes(load_precalculated)
         # raw_firing_rates, fr_bins = kp.calculate_firingrates(SPIKE_BIN_MS, load_precalculated)
-
+        self._save_val("asdf", [8], pynwb_obj)
         tw = 2
         pass
 
@@ -79,11 +79,11 @@ class DriftingGratingEPhysEnrichment(Enrichment):
 
     @staticmethod
     def saved_keys() -> list[str]:
-        return []
+        return ["asdf"]
 
     @staticmethod
     def descriptions() -> dict[str, str]:
-        return {}
+        return {"asdf": "asdf"}
 
     @staticmethod
     def func_list() -> list[FuncInfo]:
