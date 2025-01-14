@@ -8,28 +8,17 @@ from simply_nwb.pipeline.enrichments.example import ExampleEnrichment
 from simply_nwb.pipeline.enrichments.saccades import PutativeSaccadesEnrichment, DriftingGratingLabjackEnrichment
 from simply_nwb.pipeline.enrichments.saccades.drifting_grating.ephys import DriftingGratingEPhysEnrichment
 from simply_nwb.pipeline.enrichments.saccades.predict_ml_model import PredictSaccadeMLEnrichment
+import matplotlib.pyplot as plt
 
 
-def ephys_align(folderpath):
-    # Load the neuropixels event timestamps that were sent by labjack to get a reference for the np (neuropixels) clock
-    np_barcode = glob.glob(f"{folderpath}/**/*TTL*/*timestamps*.npy", recursive=True)
-    assert len(np_barcode) == 1, "Found multiple neuropixels timestamp files! Manually specifying recommended!"
-    np_barcode = np_barcode[0]
+def train():
+    # PredictSaccadeMLEnrichment.retrain([
+    #     (f"{prefix}/saccade_times.csv", f"{prefix}/20241023_unitR2_session004_rightCam_timestamps.txt", f"{prefix}/20241023_unitR2_session004_rightCam-0000DLC_resnet50_pupilsizeFeb6shuffle1_1030000.csv")
+    # ], "direction_model.pickle", save_to_default_model=True)
+    pass
 
-    np_spike_clusts = glob.glob("data/anna_ephys/**/spike_clusters.npy", recursive=True)
-    assert len(np_spike_clusts) == 1, "Should only be 1 spike_clusters.npy from kilosort output"
-    np_spike_clusts = np_spike_clusts[0]
 
-    np_spike_times = glob.glob("data/anna_ephys/**/spike_clusters.npy", recursive=True)
-    assert len(np_spike_times) == 1, "Should only be 1 spike_clusters.npy from kilosort output"
-    np_spike_times = np_spike_times[0]
-
-    labjack = glob.glob(f"{folderpath}/**/labjack/*.dat", recursive=True)
-    assert len(labjack) > 0, "No labjack files found!"
-
-    drifting = glob.glob(f"{folderpath}/**/driftingGratingMetadata*.txt", recursive=True)
-    assert len(drifting) > 0, "No driftingGratingMetadata files found!"
-
+def predict(folderpath):
     dlc_timestamps = glob.glob(f"{folderpath}/**/*rightCam*timestamps*.txt", recursive=True)
     assert len(dlc_timestamps) == 1, "Should only be 1 dlc timestamps txt! Found {} instead".format(len(dlc_timestamps))
     dlc_timestamps = dlc_timestamps[0]
@@ -57,13 +46,7 @@ def ephys_align(folderpath):
             likelihood="center_likelihood",
         ),
         PredictSaccadeMLEnrichment(),  # Prebuilt models, see run_test_saccade_gui.py for example of GUI training
-        DriftingGratingLabjackEnrichment(drifting, labjack, skip_sparse_noise=True, sparse_noise_pulsecount_offset=340),
-        DriftingGratingEPhysEnrichment(np_barcode, np_spike_clusts, np_spike_times)
-    ], "ephys", save_checkpoints=True, skip_existing=True).run(NWBSession(raw_nwbfile))
-
-    eight = sess.pull("DriftingGratingEPhys.asdf")
-
-    import matplotlib.pyplot as plt
+    ], "predict", save_checkpoints=True, skip_existing=True).run(NWBSession(raw_nwbfile))
 
     eyepos = sess.pull("PutativeSaccades.processed_eyepos")[:, 0]
     nasal = sess.pull("PredictSaccades.saccades_predicted_nasal_epochs")[:, 0]
@@ -77,10 +60,9 @@ def ephys_align(folderpath):
         plt.vlines(t, min(eyepos), max(eyepos), color="green", label="temporal")
     plt.show()
 
-
     tw = 2
 
 
 if __name__ == "__main__":
-    ephys_align("data/anna_ephys")
+    predict("data/anna_ephys")
 
