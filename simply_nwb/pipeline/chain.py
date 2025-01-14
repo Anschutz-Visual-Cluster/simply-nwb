@@ -22,7 +22,7 @@ class _SessionContainer(object):
         return self._sess
 
 class PipelineChain(object):
-    def __init__(self, enrichs: list[Enrichment], save_base_name: str, save_checkpoints=True, skip_existing=True):
+    def __init__(self, enrichs: list[Enrichment], save_base_name: str, save_checkpoints=True, skip_existing=False):
         """
         Class to chain enrichments along and save checkpoints for each enrichment processed
         skips over already processed enrichments
@@ -58,5 +58,6 @@ class PipelineChain(object):
                     ss.save(name)
                     start_idx = idx
 
-        # return load_lazy_obj(sess)  # TODO
+        # Save last enrichment in chain
+        sess.get().save(f"{self.basename}-{self.enrichs[-1].get_name()}.nwb")
         return sess.get()

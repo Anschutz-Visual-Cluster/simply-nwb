@@ -1,10 +1,17 @@
 import base64
+import math
 import os
 import random
 from io import BytesIO
+from multiprocessing.managers import Value
 
 import numpy as np
+from scipy.signal import find_peaks
+from sklearn.model_selection import GridSearchCV
+from sklearn.multioutput import MultiOutputClassifier
 from sklearn.neural_network import MLPClassifier
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import StandardScaler
 
 from simply_nwb import SimpleNWB
 from simply_nwb.pipeline import NWBSession
@@ -13,7 +20,17 @@ import pickle
 import warnings
 
 from simply_nwb.pipeline.util.models import ModelReader
+from simply_nwb.pipeline.util.saccade_gui.data_generator import DirectionDataGenerator
 from simply_nwb.transforms import eyetracking_load_dlc, csv_load_dataframe
+
+
+class WrappedMLModel(object):
+    def __init__(self, model):
+        self.model = model
+    def predict(self, xvals):
+        # Func expects an inputs of (80,) eyepositions
+        # Turns those into a (79,) arr of velocities, feeds into model
+        return self.model.predict(np.diff(xvals))
 
 
 class PredictSaccadeMLEnrichment(PredictSaccadesEnrichment):
@@ -49,6 +66,99 @@ class PredictSaccadeMLEnrichment(PredictSaccadesEnrichment):
             return pickle.load(f)
 
     @staticmethod
+    def center_saccade(waveform, start, end, pad_len=40):
+        assert start-pad_len > 0, f"Must have padding '{pad_len}' around the window to center! LeftPad Error"
+        assert end+pad_len < len(waveform), f"Must have padding '{pad_len}' around the window to center! RightPad Error"
+
+        vel = np.diff(waveform[start:end])  # Bound of 20 error around user-labeled data
+        mx = max(vel)
+        mn = min(vel)
+        val = mn if np.abs(mx) < np.abs(mn) else mx
+        center_idx = np.where(vel == val)[0][0] + start
+
+        pstart = center_idx-pad_len
+        pend = center_idx+pad_len
+
+        wv = waveform[pstart:pend]
+        wvv = np.diff(wv)
+        return wvv, pstart, pend
+
+    @staticmethod
+    def process_trainingdata(training_datas: list[tuple[str, str, str]], xkey="center_x", ykey="center_y", likeli="center_likelihood"):
+        training_x = []  # will be a numpy array of size (N, 80) N = training samples given
+        training_y = []  # numpy array like (N,) with
+        print("Loading training data..")
+        for labeled_csv, timestamps_txt, dlc_csv in training_datas:
+            print(f"Loading '{labeled_csv}'..")
+            # raw_eyepos = eyetracking_load_dlc(dlc_csv)[xkey].to_numpy()
+            labeled = csv_load_dataframe(
+                labeled_csv)  # time,eyepos,nasaltemporal,orig_time (note columns may not be named the same, just assume order is correct
+            labeled_cols = list(labeled.columns)
+            timecol = labeled_cols[0]  # Time column name
+            direction_col = labeled_cols[2]  # name of column that decides nasal v temporal, 0 = nasal, 1 = temporal
+            directions = labeled[direction_col].to_numpy()
+            directions = ((directions * 2) - 1) * -1  # Swap 0 -> 1 and 1 -> -1
+            waveform_windows = []  # [[start, end], ..] of each saccade, used to find noise from nonlabeled
+            # current standard temporal is -1, nasal is 1 need to convert the 0,1
+
+            # with open(timestamps_txt, "r") as f:
+            #     timestamps = {int(t.strip()): idx for idx, t in enumerate(f.readlines())}
+            sess = NWBSession(SimpleNWB.test_nwb())
+            sess.enrich(PutativeSaccadesEnrichment.from_raw(
+                sess.nwb, dlc_csv, timestamps_txt,
+                units=["idx", "px", "px", "likelihood", "px", "px", "likelihood", "px", "px", "likelihood", "px", "px",
+                       "likelihood", "px", "px", "likelihood"],
+                x_center=xkey,
+                y_center=ykey,
+                likelihood=likeli
+            ))
+            # Process all labeled saccades
+            eyepos = sess.pull("PutativeSaccades.processed_eyepos")[:, 0]  # Grab first dim since its x/y
+            likelihoods = sess.pull("PutativeSaccades.raw_likelihoods")
+            for idx, labelval in enumerate(labeled[timecol].to_numpy()):
+                if labelval + 80 > len(eyepos):
+                    warnings.warn(
+                        f"Found a labeled saccade outside of the eyeposition index range, not using for training! Index: '{labelval}'")
+                    continue
+                # If we wanted to make a model including the likelyhoods, this could be useful
+                # waveform = [*eyepos[startidx:endidx], *likelihoods[startidx:endidx]]
+
+                # Give a buffer of size 70+120 = 190 -> |--start--<80>--end--| we need to find start/end to center the saccade
+                # 80 is the len of the waveform. We start at 60 -> 60 + -70 = -10 and 80 -> 80 - 70 = 10, so we have a
+                # window around the labeled spot, -10 before and 10 after, where we check for a peak, then center on it
+                #|(-70)----(-10)-----(10)----(120)| space between 10s is the peak finding window, -70 to 120 is buffer
+
+                vel_waveform, rel_start, rel_end = PredictSaccadeMLEnrichment.center_saccade(eyepos[labelval-70:labelval+120], 60, 60+20)  # Center
+                start_eyeidx = labelval - 70 + rel_start
+                end_eyeidx = labelval - 70 + rel_end  # Subtract 1 since the indicies are meant for velocity calc
+
+                if len(vel_waveform) != 79:
+                    tw = 2
+                    raise ValueError(
+                        f"Invalid vel waveform extracted from training data! Expected waveform to be len 79, actual '{len(vel_waveform)}' In file '{labeled_csv}' Row '{idx}'")
+
+                direction = directions[idx]
+
+                training_x.append(vel_waveform)
+                training_y.append(direction)
+                waveform_windows.append([start_eyeidx, end_eyeidx])
+
+            # Sample noise for training
+            noise = PredictSaccadeMLEnrichment.select_noise_vel_waveforms(waveform_windows, eyepos, likelihoods,
+                                                                      len(waveform_windows))
+            training_x.extend(noise)
+            training_y.extend([0] * len(noise))  # 0 for noise
+
+            tw = 2
+        print("Starting Neural Network training, might take a bit..")
+        training_x = np.array(training_x)
+        training_y = np.array(training_y)
+
+        # print("Generating extra data")
+        # training_x, training_y = DirectionDataGenerator(training_x, training_y[:, None]).generate()
+        return training_x, training_y
+
+    @staticmethod
     def retrain(training_datas: list[tuple[str, str, str]], save_filename: str, xkey="center_x", ykey="center_y", likeli="center_likelihood", save_to_default_model=False):
         """
         Re-train a model using given a list of training data files like
@@ -62,64 +172,14 @@ class PredictSaccadeMLEnrichment(PredictSaccadesEnrichment):
         ...
 
         'timestamps.txt' and 'dlc.csv' are outputs from DLC, 'dlc.csv' is the eye positionss
-        save_to_default_model is used to include the model in the package by default, writing to default_model.py file
+        save_to_default_model is used to include the model in the package by default, writing to direction_model.py file
+        which can be copied into simply_nwb/pipeline/util/models to replace the model that comes installed with the
+        package. For the epoch models, you can use test/save_models_to_py.py and move those into that folder as well
         """
 
-        training_x = []  # will be a numpy array of size (240, N) N = training samples given
-        training_y = []  # numpy array like (N,) with
-        print("Loading training data..")
-        for labeled_csv, timestamps_txt, dlc_csv in training_datas:
-            print(f"Loading '{labeled_csv}'..")
-            # raw_eyepos = eyetracking_load_dlc(dlc_csv)[xkey].to_numpy()
-            labeled = csv_load_dataframe(labeled_csv)  # time,eyepos,nasaltemporal,orig_time (note columns may not be named the same, just assume order is correct
-            labeled_cols = list(labeled.columns)
-            timecol = labeled_cols[0]  # Time column name
-            direction_col = labeled_cols[2]  # name of column that decides nasal v temporal, 0 = nasal, 1 = temporal
-            directions = labeled[direction_col].to_numpy()
-            directions = ((directions*2)-1)*-1  # Swap 0 -> 1 and 1 -> -1
-            waveform_windows = []  # [[start, end], ..] of each saccade, used to find noise from nonlabeled
-            # current standard temporal is -1, nasal is 1 need to convert the 0,1
+        training_x, training_y = PredictSaccadeMLEnrichment.process_trainingdata(training_datas, xkey, ykey, likeli)
 
-            # with open(timestamps_txt, "r") as f:
-            #     timestamps = {int(t.strip()): idx for idx, t in enumerate(f.readlines())}
-            sess = NWBSession(SimpleNWB.test_nwb())
-            sess.enrich(PutativeSaccadesEnrichment.from_raw(
-                sess.nwb, dlc_csv, timestamps_txt,
-                units=["idx", "px", "px", "likelihood", "px", "px", "likelihood", "px", "px", "likelihood", "px", "px", "likelihood", "px", "px", "likelihood"],
-                x_center=xkey,
-                y_center=ykey,
-                likelihood=likeli
-            ))
-            # Process all labeled saccades
-            eyepos = sess.pull("PutativeSaccades.processed_eyepos")[:, 0]  # Grab first dim since its x/y
-            likelihoods = sess.pull("PutativeSaccades.raw_likelihoods")
-            for idx, labelval in enumerate(labeled[timecol].to_numpy()):
-                if labelval + 80 > len(eyepos):
-                    warnings.warn(f"Found a labeled saccade outside of the eyeposition index range, not using for training! Index: '{labelval}'")
-                    continue
-                startidx = labelval
-                endidx = startidx + 80
-
-                # If we wanted to make a model including the likelyhoods, this could be useful
-                # waveform = [*eyepos[startidx:endidx], *likelihoods[startidx:endidx]]
-                waveform = eyepos[startidx:endidx]
-                direction = directions[idx]
-
-                training_x.append(waveform)
-                training_y.append(direction)
-                waveform_windows.append([startidx, endidx])
-
-            # Sample noise for training
-            noise = PredictSaccadeMLEnrichment.select_noise_waveforms(waveform_windows, eyepos, likelihoods, len(waveform_windows))
-            training_x.extend(noise)
-            training_y.extend([0]*len(noise))  # 0 for noise
-
-            tw = 2
-        print("Starting Neural Network training, might take a bit..")
-        training_x = np.array(training_x)
-        training_y = np.array(training_y)
-
-        clf = MLPClassifier(
+        mlp_clf = MLPClassifier(
             activation='tanh',
             solver='adam',
             learning_rate="adaptive",
@@ -130,25 +190,68 @@ class PredictSaccadeMLEnrichment(PredictSaccadesEnrichment):
             shuffle=True,
             n_iter_no_change=1000
         )
+        mlp_clf.out_activation_ = "softmax"
 
-        clf.out_activation_ = "softmax"
-        clf.fit(training_x, training_y)
+        hidden_layer_sizes = [(int(math.pow(2, v)),) for v in range(3, 6)]  # Try layer sizes 8,16,32
+        pipe = Pipeline(steps=[
+            ("scale", StandardScaler()),
+            # ("mlpc", MultiOutputClassifier(mlp_clf))
+            ("mlpc", mlp_clf)
+        ])
+
+        search = GridSearchCV(pipe, {
+            # 'mlpc__estimator__hidden_layer_sizes': hidden_layer_sizes,
+            # 'mlpc__estimator__max_iter': [
+            #     1000,
+            # ],
+            # 'mlpc__estimator__activation': ['tanh', 'relu'],
+            # 'mlpc__estimator__solver': ['adam'],
+            # 'mlpc__estimator__alpha': [0.0001, 0.05],
+            # 'mlpc__estimator__learning_rate': ['constant', 'adaptive'],
+            'mlpc__hidden_layer_sizes': hidden_layer_sizes,
+            'mlpc__max_iter': [
+                1000,
+            ],
+            'mlpc__activation': ['tanh', 'relu'],
+            'mlpc__solver': ['adam'],
+            'mlpc__alpha': [0.0001, 0.05],
+            'mlpc__learning_rate': ['constant', 'adaptive'],
+        })
+        search.fit(training_x, training_y)
+
+        trained_model = WrappedMLModel(search)
 
         if save_to_default_model:
-            byts = pickle.dumps(clf)
+            byts = pickle.dumps(trained_model)
             b64 = base64.b64encode(byts)
-            with open("default_model.py", "w") as f:
+            with open("direction_model.py", "w") as f:  # TODO write this directly into the package location? or leave as manually move..
                 f.write(f"MODEL_DATA = {str(b64)}")
         else:
             with open(save_filename, "wb") as f:
-                pickle.dump(clf, f)
+                pickle.dump(trained_model, f)
 
-        return clf
+        return trained_model
 
     @staticmethod
-    def select_noise_waveforms(waveform_windows, eyepos, likelihoods, num_samples):
+    def select_noise_vel_waveforms(waveform_windows, eyepos, likelihoods, num_samples):
+        """
+        Select some waveforms from the full eyeposition to label as noise.
+        Takes the peaks and troughs of the eyeposition, then randomly selects one, if that value intersects with
+        a labeled saccade, re-pick. Do this until all requested samples are pulled. (could be optimized)
+        """
+
         count = 0
         loops = 0
+        eyevel = np.diff(eyepos)  # Eye velocity, forward difference
+        up_peaks = find_peaks(eyevel)
+        down_peaks = find_peaks(eyevel*-1)
+
+        # Combine and make unique
+        peaks = [*list(up_peaks[0]), *list(down_peaks[0])]
+        peaks = np.array(list(set(peaks)))
+
+        if len(peaks) < num_samples*3/4:
+            raise ValueError("Cannot select noise waveforms, num samples must be at most 3/4 of the peaks found!")
 
         def within(x, w):
             return (x <= w[1]) and (x >= w[0])
@@ -164,13 +267,16 @@ class PredictSaccadeMLEnrichment(PredictSaccadesEnrichment):
                 return samples
 
             found = False
-            idx = random.randint(0, len(eyepos))
+            p_idx = random.randint(0, len(peaks))
+            idx = peaks[p_idx]
+
             for wind in waveform_windows:
-                if within(idx, wind) or within(idx + 80, wind):
+                if within(idx - 40, wind) or within(idx + 40, wind):
                     found = True
                     break
             if not found:
                 # samples.append([*eyepos[idx:idx+80], *likelihoods[idx:idx+80]])  # TODO include likelihoods?
-                samples.append(eyepos[idx:idx + 80])
-                count = count + 1
-
+                wv = eyepos[idx - 40:idx + 40]
+                if len(wv) == 80:  # .diff will turn 80 -> 79
+                    samples.append(np.diff(wv))
+                    count = count + 1

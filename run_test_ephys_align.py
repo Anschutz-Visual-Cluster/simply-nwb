@@ -61,22 +61,6 @@ def ephys_align(folderpath):
         DriftingGratingEPhysEnrichment(np_barcode, np_spike_clusts, np_spike_times)
     ], "ephys", save_checkpoints=True, skip_existing=True).run(NWBSession(raw_nwbfile))
 
-    eight = sess.pull("DriftingGratingEPhys.asdf")
-
-    import matplotlib.pyplot as plt
-
-    eyepos = sess.pull("PutativeSaccades.processed_eyepos")[:, 0]
-    nasal = sess.pull("PredictSaccades.saccades_predicted_nasal_epochs")[:, 0]
-    temporal = sess.pull("PredictSaccades.saccades_predicted_temporal_epochs")[:, 0]
-
-    plt.plot(eyepos)
-    for n in nasal:
-        plt.vlines(n, min(eyepos), max(eyepos), color="red", label="nasal")
-
-    for t in temporal:
-        plt.vlines(t, min(eyepos), max(eyepos), color="green", label="temporal")
-    plt.show()
-
 
     tw = 2
 
