@@ -32,6 +32,7 @@ class PipelineChain(object):
         self.enrichs = enrichs
         self.skip_exist = skip_existing
         self.save = save_checkpoints
+        assert len(enrichs) > 0, "Must have at least one Enrichment in the chain!"
 
     def run(self, sess: NWBSession):
         print(f"Starting Enrichment chain of size '{len(self.enrichs)}'")
@@ -41,7 +42,7 @@ class PipelineChain(object):
         needs_update = False
 
         names = []
-        for idx, enrich in enumerate(self.enrichs):
+        for idx, enrich in enumerate(self.enrichs[:-1]):  # Dont process the last enrichment, always redo
             name = f"{self.basename}_{enrich.get_name()}.nwb"
             names.append(name)
 
@@ -59,5 +60,6 @@ class PipelineChain(object):
                     start_idx = idx
 
         # Save last enrichment in chain
-        sess.get().save(f"{self.basename}-{self.enrichs[-1].get_name()}.nwb")
+        sess.get().enrich(self.enrichs[-1])
+        sess.get().save(f"{self.basename}_{self.enrichs[-1].get_name()}.nwb")
         return sess.get()

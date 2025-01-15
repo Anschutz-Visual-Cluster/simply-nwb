@@ -3,7 +3,7 @@ import math
 import os
 import random
 from io import BytesIO
-from multiprocessing.managers import Value
+
 
 import numpy as np
 from scipy.signal import find_peaks
@@ -12,6 +12,7 @@ from sklearn.multioutput import MultiOutputClassifier
 from sklearn.neural_network import MLPClassifier
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
+from spencer_funcs.lazy import LazyObject, lazy_init
 
 from simply_nwb import SimpleNWB
 from simply_nwb.pipeline import NWBSession
@@ -30,28 +31,31 @@ class WrappedMLModel(object):
     def predict(self, xvals):
         # Func expects an inputs of (80,) eyepositions
         # Turns those into a (79,) arr of velocities, feeds into model
-        return self.model.predict(np.diff(xvals))
+        return self.raw_predict(np.diff(xvals))
+
+    def raw_predict(self, xvals):
+        return self.model.predict(xvals)
 
 
 class PredictSaccadeMLEnrichment(PredictSaccadesEnrichment):
     def __init__(self, direction_model=None, epoch_nasal_regressor=None, epoch_temporal_regressor=None, epoch_nasal_classifier=None, epoch_temporal_classifier=None):
         data = [  # Order matches superclass init arg order
             [direction_model, "direction_model"],
-            [epoch_temporal_regressor, "epoch_temporal_regressor"],
-            [epoch_temporal_classifier, "epoch_temporal_classifier"],
-            [epoch_nasal_regressor, "epoch_nasal_regressor"],
-            [epoch_nasal_classifier, "epoch_nasal_classifier"]
+            [epoch_temporal_regressor, "temporal_epoch_regressor"],
+            [epoch_temporal_classifier, "temporal_epoch_transformer"],
+            [epoch_nasal_regressor, "nasal_epoch_regressor"],
+            [epoch_nasal_classifier, "nasal_epoch_transformer"]
         ]
 
         args = []
         for value, name in data:
             if value is None:
-                value = ModelReader.get_model(name)  # TODO Lazy load these
+                value = lazy_init(ModelReader.get_model, name)
             else:
                 if not isinstance(value, str):  # Assume value passed in is a filename
                     raise ValueError(f"Invalid arg '{name}' Expected a filepath!")
                 with open(value, "rb") as f:
-                    value = pickle.load(f)
+                    value = LazyObject(lambda: pickle.load(f))
 
             args.append(value)
         super().__init__(*args, use_mlp_input=True)
@@ -84,7 +88,7 @@ class PredictSaccadeMLEnrichment(PredictSaccadesEnrichment):
         return wvv, pstart, pend
 
     @staticmethod
-    def process_trainingdata(training_datas: list[tuple[str, str, str]], xkey="center_x", ykey="center_y", likeli="center_likelihood"):
+    def process_trainingdata(training_datas: list[tuple[str, str, str]], xkey="center_x", ykey="center_y", likeli="center_likelihood", generate_data=True):
         training_x = []  # will be a numpy array of size (N, 80) N = training samples given
         training_y = []  # numpy array like (N,) with
         print("Loading training data..")
@@ -149,17 +153,17 @@ class PredictSaccadeMLEnrichment(PredictSaccadesEnrichment):
             training_x.extend(noise)
             training_y.extend([0] * len(noise))  # 0 for noise
 
-            tw = 2
-        print("Starting Neural Network training, might take a bit..")
         training_x = np.array(training_x)
         training_y = np.array(training_y)
 
-        # print("Generating extra data")
-        # training_x, training_y = DirectionDataGenerator(training_x, training_y[:, None]).generate()
+        if generate_data:
+            print("Generating extra data")
+            training_x, training_y = DirectionDataGenerator(training_x, training_y[:, None]).generate()
+
         return training_x, training_y
 
     @staticmethod
-    def retrain(training_datas: list[tuple[str, str, str]], save_filename: str, xkey="center_x", ykey="center_y", likeli="center_likelihood", save_to_default_model=False):
+    def retrain(training_datas: list[tuple[str, str, str]], save_filename: str, xkey="center_x", ykey="center_y", likeli="center_likelihood", save_to_default_model=False, generate_data=True):
         """
         Re-train a model using given a list of training data files like
         [('saccade_times.csv', 'timestamps.csv', dlc.csv'), ...] where each (..) is it's own training dataset
@@ -177,49 +181,65 @@ class PredictSaccadeMLEnrichment(PredictSaccadesEnrichment):
         package. For the epoch models, you can use test/save_models_to_py.py and move those into that folder as well
         """
 
-        training_x, training_y = PredictSaccadeMLEnrichment.process_trainingdata(training_datas, xkey, ykey, likeli)
+        # training_x, training_y = PredictSaccadeMLEnrichment.process_trainingdata(training_datas, xkey, ykey, likeli, generate_data=False)
+        # training_x = training_x[:20]
+        # training_y = training_y[:20]
+        training_x, training_y = PredictSaccadeMLEnrichment.process_trainingdata(training_datas, xkey, ykey, likeli, generate_data=generate_data)
 
         mlp_clf = MLPClassifier(
             activation='tanh',
             solver='adam',
+            hidden_layer_sizes=[32, 16, 8, 4],
             learning_rate="adaptive",
             # 80 xpoints
-            hidden_layer_sizes=(80, 12, 2),
             max_iter=10000,
             verbose=True,
             shuffle=True,
-            n_iter_no_change=1000
+            n_iter_no_change=10000
         )
         mlp_clf.out_activation_ = "softmax"
 
-        hidden_layer_sizes = [(int(math.pow(2, v)),) for v in range(3, 6)]  # Try layer sizes 8,16,32
-        pipe = Pipeline(steps=[
-            ("scale", StandardScaler()),
-            # ("mlpc", MultiOutputClassifier(mlp_clf))
-            ("mlpc", mlp_clf)
-        ])
+        # pipe = Pipeline(steps=[
+        #     ("scale", StandardScaler()),
+        #   # ("mlpc", MultiOutputClassifier(mlp_clf))
+        #     ("mlpc", mlp_clf)
+        # ])
 
-        search = GridSearchCV(pipe, {
-            # 'mlpc__estimator__hidden_layer_sizes': hidden_layer_sizes,
-            # 'mlpc__estimator__max_iter': [
-            #     1000,
-            # ],
-            # 'mlpc__estimator__activation': ['tanh', 'relu'],
-            # 'mlpc__estimator__solver': ['adam'],
-            # 'mlpc__estimator__alpha': [0.0001, 0.05],
-            # 'mlpc__estimator__learning_rate': ['constant', 'adaptive'],
-            'mlpc__hidden_layer_sizes': hidden_layer_sizes,
-            'mlpc__max_iter': [
-                1000,
-            ],
-            'mlpc__activation': ['tanh', 'relu'],
-            'mlpc__solver': ['adam'],
-            'mlpc__alpha': [0.0001, 0.05],
-            'mlpc__learning_rate': ['constant', 'adaptive'],
-        })
-        search.fit(training_x, training_y)
+        # hidden_layer_sizes = [[x, 3] for x in [int(math.pow(2, v)) for v in range(2, 6)]]  # Try layer sizes 4,8,16,32
+        # search = GridSearchCV(pipe, {
+        #     # 'mlpc__estimator__hidden_layer_sizes': hidden_layer_sizes,
+        #     # 'mlpc__estimator__max_iter': [
+        #     #     1000,
+        #     # ],
+        #     # 'mlpc__estimator__activation': ['tanh', 'relu'],
+        #     # 'mlpc__estimator__solver': ['adam'],
+        #     # 'mlpc__estimator__alpha': [0.0001, 0.05],
+        #     # 'mlpc__estimator__learning_rate': ['constant', 'adaptive'],
+        #     'mlpc__hidden_layer_sizes': hidden_layer_sizes,
+        #     'mlpc__max_iter': [
+        #         10000,
+        #     ],
+        #     'mlpc__activation': ['tanh', 'relu'],
+        #     'mlpc__solver': ['adam'],
+        #     'mlpc__alpha': [0.0001, 0.05],
+        #     'mlpc__learning_rate': ['constant', 'adaptive'],
+        # })
+        # search = GridSearchCV(pipe, {
+        #     'mlpc__max_iter': [
+        #         100000,
+        #     ],
+        #     'mlpc__activation': ['tanh'],
+        #     'mlpc__solver': ['adam'],
+        #     'mlpc__alpha': [0.0001],
+        #     'mlpc__learning_rate': ['adaptive'],
+        # })
+        #
+        # search.fit(training_x, training_y)
+        # trained_model = WrappedMLModel(search)
 
-        trained_model = WrappedMLModel(search)
+        print("Starting Neural Network training, might take a bit..")
+        mlp_clf.fit(training_x, training_y)
+        trained_model = WrappedMLModel(mlp_clf)
 
         if save_to_default_model:
             byts = pickle.dumps(trained_model)
@@ -230,7 +250,36 @@ class PredictSaccadeMLEnrichment(PredictSaccadesEnrichment):
             with open(save_filename, "wb") as f:
                 pickle.dump(trained_model, f)
 
-        return trained_model
+        return trained_model, training_x, training_y
+
+    # @staticmethod
+    # def select_noise_vel_waveforms(waveform_windows, eyepos, likelihoods, num_samples):
+    #     count = 0
+    #     loops = 0
+    #
+    #     def within(x, w):
+    #         return (x <= w[1]) and (x >= w[0])
+    #
+    #     samples = []
+    #
+    #     while True:  # Could make this better but its not worth the time lol
+    #         loops = loops + 1
+    #         if loops >= 10000000:
+    #             raise ValueError("Unable to sample noise waveforms!")  # TODO if this happens fix the sampling lol
+    #
+    #         if count >= num_samples:
+    #             return samples
+    #
+    #         found = False
+    #         idx = random.randint(0, len(eyepos))
+    #         for wind in waveform_windows:
+    #             if within(idx, wind) or within(idx + 80, wind):
+    #                 found = True
+    #                 break
+    #         if not found:
+    #             # samples.append([*eyepos[idx:idx+80], *likelihoods[idx:idx+80]])  # TODO include likelihoods?
+    #             samples.append(np.diff(eyepos[idx:idx + 80]))
+    #             count = count + 1
 
     @staticmethod
     def select_noise_vel_waveforms(waveform_windows, eyepos, likelihoods, num_samples):

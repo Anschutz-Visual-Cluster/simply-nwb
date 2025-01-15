@@ -12,8 +12,9 @@ from simply_nwb.pipeline.enrichments.saccades.predict_ml_model import PredictSac
 
 def ephys_align(folderpath):
     # Load the neuropixels event timestamps that were sent by labjack to get a reference for the np (neuropixels) clock
-    np_barcode = glob.glob(f"{folderpath}/**/*TTL*/*timestamps*.npy", recursive=True)
-    assert len(np_barcode) == 1, "Found multiple neuropixels timestamp files! Manually specifying recommended!"
+    # NOTE: This file was called timestamps.npy in GUI version 0.5.X!!!
+    np_barcode = glob.glob(f"{folderpath}/**/*AP*/*TTL*/*sample_numbers*.npy", recursive=True)
+    assert len(np_barcode) == 1, "Found multiple neuropixels barcode files! Manually specifying recommended!"
     np_barcode = np_barcode[0]
 
     np_spike_clusts = glob.glob("data/anna_ephys/**/spike_clusters.npy", recursive=True)
@@ -58,7 +59,12 @@ def ephys_align(folderpath):
         ),
         PredictSaccadeMLEnrichment(),  # Prebuilt models, see run_test_saccade_gui.py for example of GUI training
         DriftingGratingLabjackEnrichment(drifting, labjack, skip_sparse_noise=True, sparse_noise_pulsecount_offset=340),
-        DriftingGratingEPhysEnrichment(np_barcode, np_spike_clusts, np_spike_times)
+        DriftingGratingEPhysEnrichment(
+            np_barcode,
+            np_spike_clusts,
+            np_spike_times,
+            labjack_barcode_channel="y0"
+        )
     ], "ephys", save_checkpoints=True, skip_existing=True).run(NWBSession(raw_nwbfile))
 
 

@@ -2,6 +2,7 @@ import logging
 import warnings
 from typing import Any, Callable
 
+import pynwb.base
 from av.video.format import names
 from pynwb import NWBFile, TimeSeries
 
@@ -87,7 +88,19 @@ class Enrichment(object):
         :param nwb: nwbfile to pull from
         :return: value or error if it doesn't exist
         """
-        return self._required_vals_map.get(val_key, nwb)
+        try:
+            val = self._required_vals_map.get(val_key, nwb)
+            return val
+        except KeyError as e:
+            # Couldn't find the key, could be extra key not defined in config
+            try:
+                val = nwb.processing[f"Enrichment.{val_key.split(".")[0]}"][f"{"".join(val_key.split(".")[1:])}"]
+                if isinstance(val, pynwb.base.TimeSeries):
+                    val = val.data[:]
+                return val
+            except Exception as e2:
+                print(f"Attempting to find missing key '{val_key}' failed!")
+                raise e2
 
     @staticmethod
     def saved_keys() -> list[str]:

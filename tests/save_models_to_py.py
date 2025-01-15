@@ -5,22 +5,29 @@ from simply_nwb.pipeline.util.models import ModelSaver
 
 
 def main():
+    # prefix = ""
+    prefix = "predict_gui_"
+
     names = [
-        "direction_model",
-        "epoch_nasal_regressor",
-        "epoch_temporal_regressor",
-        "epoch_nasal_classifier",
-        "epoch_temporal_classifier"
+        "nasal_epoch_regressor",
+        "temporal_epoch_regressor",
+        "nasal_epoch_transformer",
+        "temporal_epoch_transformer"
     ]
 
     os.chdir("..")
     for name in names:
+        name = prefix + name
         print(f"Processing '{name}'..")
-        with open(f"{name}.pickle", "rb") as f:
-            data = pickle.load(f)
-            ModelSaver.save_model(f"{name}.py", data)
+        try:
+            with open(f"{name}.pickle", "rb") as f:
+                data = pickle.load(f)
+                ModelSaver.save_model(f"{name[len(prefix):]}.py", data)
+        except FileNotFoundError as e:
+            print(f"File '{name}' not found! Files in cwd: '{os.listdir()}'")
+            raise e
 
-    print("Now put the .py files in simply_nwb/pipeline/util/models")
+    print("Now put the generated .py files in simply_nwb/pipeline/util/models!!!!!!!!!!!!!!!!!")
 
 
 if __name__ == "__main__":

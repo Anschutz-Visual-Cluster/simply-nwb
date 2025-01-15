@@ -14,6 +14,17 @@ class ModelSaver(object):
 class ModelReader(object):
 
     @staticmethod
+    def load_from_file(filename):
+        if filename.endswith(".py"):
+            with open(filename, "r") as f:
+                data = "\n".join(f.readlines())
+                b64 = data[len("MODEL_DATA = '"):-len("'")]
+                return ModelReader.read_modeldata(b64)
+        else:
+            with open(filename, "rb") as f:
+                return pickle.load(f)
+
+    @staticmethod
     def read_modeldata(modeldata):
         byts = base64.b64decode(modeldata)
         return pickle.loads(byts)
@@ -24,14 +35,14 @@ class ModelReader(object):
         # Only a select models are saved this way
         if model_name == "direction_model":
             from simply_nwb.pipeline.util.models.direction_model import MODEL_DATA
-        elif model_name == "epoch_nasal_regressor":
-            from simply_nwb.pipeline.util.models.epoch_nasal_regressor import MODEL_DATA
-        elif model_name == "epoch_temporal_regressor":
-            from simply_nwb.pipeline.util.models.epoch_temporal_regressor import MODEL_DATA
-        elif model_name == "epoch_nasal_classifier":
-            from simply_nwb.pipeline.util.models.epoch_nasal_classifier import MODEL_DATA
-        elif model_name == "epoch_temporal_classifier":
-            from simply_nwb.pipeline.util.models.epoch_temporal_classifier import MODEL_DATA
+        elif model_name == "nasal_epoch_regressor":
+            from simply_nwb.pipeline.util.models.nasal_epoch_regressor import MODEL_DATA
+        elif model_name == "temporal_epoch_regressor":
+            from simply_nwb.pipeline.util.models.temporal_epoch_regressor import MODEL_DATA
+        elif model_name == "nasal_epoch_transformer":
+            from simply_nwb.pipeline.util.models.nasal_epoch_transformer import MODEL_DATA
+        elif model_name == "temporal_epoch_transformer":
+            from simply_nwb.pipeline.util.models.temporal_epoch_transformer import MODEL_DATA
         else:
             raise ValueError(f"No model named '{model_name}' found!")
 

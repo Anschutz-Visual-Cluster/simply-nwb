@@ -1,6 +1,8 @@
 import glob
 import os
 
+import numpy as np
+
 from simply_nwb import SimpleNWB
 from simply_nwb.pipeline import NWBSession
 from simply_nwb.pipeline.chain import PipelineChain
@@ -10,8 +12,10 @@ from simply_nwb.pipeline.enrichments.saccades.drifting_grating.ephys import Drif
 from simply_nwb.pipeline.enrichments.saccades.predict_ml_model import PredictSaccadeMLEnrichment
 import matplotlib.pyplot as plt
 
+from simply_nwb.pipeline.util.models import ModelReader
 
-def train(folder):
+
+def get_trainingdata(folder):
     trainingdata = []
     folders_to_check = []
     for f in os.listdir(folder):
@@ -33,8 +37,21 @@ def train(folder):
         dlc = dlc[0]
 
         trainingdata.append((sacc_times, timestamps, dlc))
+    return trainingdata
 
-    PredictSaccadeMLEnrichment.retrain(trainingdata, "direction_model.pickle", save_to_default_model=True)
+
+def train(folder):
+    trainingdata = get_trainingdata(folder)
+    model, training_x, training_y = PredictSaccadeMLEnrichment.retrain(trainingdata, "direction_model.pickle", save_to_default_model=True)
+    res = model.raw_predict(training_x)
+
+    corr = 0
+    for i in range(len(res)):
+        if res[i] == training_y[i]:
+            corr = corr + 1
+    corr_percent = corr / len(res)
+
+    print(f"Predicted {round(corr_percent*100,3)}% correctly on all training data")
     tw = 2
 
 
@@ -82,14 +99,25 @@ def predict(folderpath, skip_exist):
 
     tw = 2
 
+def evaluate(training_folder, model_filepath):
+    training_x, training_y = PredictSaccadeMLEnrichment.process_trainingdata(get_trainingdata(training_folder), generate_data=False)
+    model = ModelReader.load_from_file(model_filepath)
+    pos = len(np.where(model.raw_predict(training_x) == training_y)[0])
+    total = len(training_y)
+    corr = pos / total
+    print(f"Model performance on trainingdata is {round(corr, 2)*100}% correct, {pos}/{total}")
+    tw = 2
 
 if __name__ == "__main__":
     # Train first, then copy model to default location at simply_nwb/pipeline/util/models/direction_model.py
     # then run predict(...)
-    # train("data/extraction")
 
-    folder = "data/extraction/control001"
+    fldr = "data/extraction/control001"
     skip_exist = False
     # skip_exist = True
-    predict(folder, skip_exist)
+
+    # predict(fldr, skip_exist)
+    train("data/extraction")
+    evaluate("data/extraction", "direction_model.py")  # Test recently saved model (in cwd)
+
 
