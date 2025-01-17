@@ -41,7 +41,10 @@ class ExampleEnrichment(Enrichment):
         return [
             #(self, funcname: str, funcdescription: str, arg_and_description_list: dict[str, str], example_str: str):
             # Form of functions should be f(nwbobj, args, kwargs) -> Any
-            FuncInfo("test", "test function", {"args": "list of args to pass to the function", "kwargs": "dict of keyword arguments to pass to the function"}, "test(['myarg'], {'mykwarg': 8})")
+            FuncInfo("test", "test function", {
+                "args": "list of args to pass to the function",
+                "kwargs": "dict of keyword arguments to pass to the function"
+            }, "test(['myarg'], {'mykwarg': 8})")
         ]
 
     @staticmethod

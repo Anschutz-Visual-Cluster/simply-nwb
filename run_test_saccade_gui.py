@@ -109,8 +109,6 @@ def graph_saccades(sess: NWBSession):
     tw = 2
 
 
-
-
 def main(dlc_filepath, timestamp_filepath, drifting_grating_filepath):
     ### REMOVE THIS FOR ACTUAL TRAINING
     os.environ["NWB_DEBUG"] = "True"  # NOTE ONLY USE TO QUICKLY TRAIN A MODEL (not for real data)
@@ -140,10 +138,7 @@ def main(dlc_filepath, timestamp_filepath, drifting_grating_filepath):
     # Code to use the interactive GUI for creating a model for determining saccade v noise and epochs
     # predict_enrich = PredictedSaccadeGUIEnrichment(200, ["putative.nwb", "putative.nwb"], num_samples, putative_kwargs={
     # If the features tracked by DLC do not match the default, the names of the coordinates and the likelihoods will have to be overwritten
-        # "x_center": "center_x",
-        # "y_center": "center_y",
-        # "likelihood": "center_likelihood",
-    # })
+
     predict_enrich = PredictSaccadeMLEnrichment()  # Prebuilt models
 
     # This will open two guis, where you will identify which direction the saccade is, and what the start and stop is

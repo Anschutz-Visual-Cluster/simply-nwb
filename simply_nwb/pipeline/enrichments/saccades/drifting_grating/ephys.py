@@ -34,11 +34,12 @@ class DriftingGratingEPhysEnrichment(Enrichment):
     NEUROPIXELS_SAMPLING_RATE = 30000
     LABJACK_SAMPLING_RATE = 2000
 
-    def __init__(self, np_barcode_fn, np_spike_clusts_fn, np_spike_times_fn, labjack_barcode_channel="y0", squarewave_args={}):
+    def __init__(self, np_barcode_fn, np_spike_clusts_fn, np_spike_times_fn, labjack_barcode_channel="y0", lj_timestamps_colname="Time", squarewave_args={}):
         super().__init__(NWBValueMapping({
             "DriftingGratingLabjack": EnrichmentReference("DriftingGratingLabjack")  # Required that the saccades, labjack and driftingGrating are already in file
         }))
 
+        self.lj_timestamps_colname = lj_timestamps_colname
         self.np_barcode_fn = np_barcode_fn
         self.np_spike_clusts_fn = np_spike_clusts_fn
         self.np_spike_times_fn = np_spike_times_fn
@@ -84,6 +85,18 @@ class DriftingGratingEPhysEnrichment(Enrichment):
         lj_states = np.where(np.logical_or(np.diff(lj_barcode) > +0.5, np.diff(lj_barcode) < -0.5))[0]
         lj_signal = self.extract_barcode_signals(lj_states, DriftingGratingEPhysEnrichment.LABJACK_SAMPLING_RATE)
         lj_barcode_indices, lj_barcode_vals = self.decode_barcode_signals(lj_signal, DriftingGratingEPhysEnrichment.LABJACK_SAMPLING_RATE)
+
+        matched_vals, common_lj, common_np = np.intersect1d(lj_barcode_vals, np_barcode_vals, return_indices=True)
+
+        spike_times_in_state_counter_time = np.interp(self.spike_times, np.array(np_barcode_indices)[common_np], matched_vals)
+        spikes_times_in_labjack_indices = np.round(np.interp(spike_times_in_state_counter_time, np.array(lj_barcode_indices)[common_lj], lj_barcode_indices)).astype(int)
+
+        labjack_time = self._get_req_val(f"DriftingGratingLabjack.{self.lj_timestamps_colname}", pynwb_obj)
+        spike_times_in_labjack_time = labjack_time[spikes_times_in_labjack_indices]
+
+        kp = KilosortProcessor(self.spike_clusts, spike_times_in_labjack_time)
+        # unit_spikes = kp.calculate_spikes(False)
+        unit_firingrates = kp.calculate_firingrates(1.0, False)
 
         self._save_val("asdf", [8], pynwb_obj)
         tw = 2
@@ -186,7 +199,6 @@ class DriftingGratingEPhysEnrichment(Enrichment):
         offset = 0
         for pulseTrain in pulseTrains:
 
-            #
             wrapperFallingEdge = pulseTrain[1]
             wrapperRisingEdge = pulseTrain[-2]
             barcodeLeftEdge = wrapperFallingEdge + round(wrapperBitSize * samplingRate)
@@ -239,4 +251,3 @@ class DriftingGratingEPhysEnrichment(Enrichment):
 
 
         return barcodeIndices, barcodeValues
-

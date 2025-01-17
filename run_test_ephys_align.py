@@ -21,8 +21,8 @@ def ephys_align(folderpath):
     assert len(np_spike_clusts) == 1, "Should only be 1 spike_clusters.npy from kilosort output"
     np_spike_clusts = np_spike_clusts[0]
 
-    np_spike_times = glob.glob("data/anna_ephys/**/spike_clusters.npy", recursive=True)
-    assert len(np_spike_times) == 1, "Should only be 1 spike_clusters.npy from kilosort output"
+    np_spike_times = glob.glob("data/anna_ephys/**/spike_times.npy", recursive=True)
+    assert len(np_spike_times) == 1, "Should only be 1 spike_times.npy from kilosort output"
     np_spike_times = np_spike_times[0]
 
     labjack = glob.glob(f"{folderpath}/**/labjack/*.dat", recursive=True)

@@ -34,6 +34,7 @@ class PutativeSaccadesEnrichment(Enrichment):
 
         # Give the superclass a mapping of required values for this enrichment to run
         super().__init__(NWBValueMapping({
+            # nwb.processing[stim_name][x_center].data[:]
             "x": [lambda x: x.processing, stim_name, x_center, lambda y: y.data[:]],
             "y": [lambda x: x.processing, stim_name, y_center, lambda y: y.data[:]],
             "likelihood": [lambda x: x.processing, stim_name, likelihood, lambda y: y.data[:]],

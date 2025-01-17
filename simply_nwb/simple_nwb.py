@@ -20,8 +20,7 @@ from simply_nwb.transforms.p_erg import _PergMixin
 from simply_nwb.transforms.eyetracking import _EyetrackingMixin
 
 
-class SimpleNWB(_TIFMixin, _MP4Mixin, _LabjackMixin, _BlackrockMixin, _PergMixin,
-                _EyetrackingMixin, object):
+class SimpleNWB(_TIFMixin, _MP4Mixin, _LabjackMixin, _BlackrockMixin, _PergMixin, _EyetrackingMixin, object):
     @staticmethod
     def create_nwb(
             session_description: str,
