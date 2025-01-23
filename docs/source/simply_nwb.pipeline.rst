@@ -13,6 +13,22 @@ Subpackages
 Submodules
 ----------
 
+simply\_nwb.pipeline.chain module
+---------------------------------
+
+.. automodule:: simply_nwb.pipeline.chain
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+simply\_nwb.pipeline.funcinfo module
+------------------------------------
+
+.. automodule:: simply_nwb.pipeline.funcinfo
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 simply\_nwb.pipeline.value\_mapping module
 ------------------------------------------
 

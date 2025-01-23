@@ -4,14 +4,6 @@ simply\_nwb.pipeline.util.saccade\_gui package
 Submodules
 ----------
 
-simply\_nwb.pipeline.util.saccade\_gui.classifiers module
----------------------------------------------------------
-
-.. automodule:: simply_nwb.pipeline.util.saccade_gui.classifiers
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 simply\_nwb.pipeline.util.saccade\_gui.consts module
 ----------------------------------------------------
 
