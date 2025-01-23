@@ -4,15 +4,9 @@ import warnings
 
 import numpy as np
 from population_analysis.processors.kilosort import KilosortProcessor
-
 from simply_nwb.pipeline import Enrichment, NWBValueMapping
 from simply_nwb.pipeline.funcinfo import FuncInfo
-from simply_nwb.pipeline.util.waves import startstop_of_squarewave
 from simply_nwb.pipeline.value_mapping import EnrichmentReference
-from simply_nwb.transforms import drifting_grating_metadata_read_from_filelist, labjack_concat_files
-
-
-# TODO Create graph code for analyzing the labjack data?
 
 
 class DriftingGratingEPhysEnrichment(Enrichment):
@@ -30,11 +24,14 @@ class DriftingGratingEPhysEnrichment(Enrichment):
 
     Requires the Neuropixels timestamps for labjack signals aka 'barcode' to sync to labjack time
 
+    the 'barcode' is a signal encoding an integer value, of which is the same between the labjack and neuropixels,
+    which allows alignment between the two time spaces
+
     """
     NEUROPIXELS_SAMPLING_RATE = 30000
     LABJACK_SAMPLING_RATE = 2000
 
-    def __init__(self, np_barcode_fn, np_spike_clusts_fn, np_spike_times_fn, labjack_barcode_channel="y0", lj_timestamps_colname="Time", squarewave_args={}):
+    def __init__(self, np_barcode_fn, np_spike_clusts_fn, np_spike_times_fn, labjack_barcode_channel="y0", lj_timestamps_colname="Time"):
         super().__init__(NWBValueMapping({
             "DriftingGratingLabjack": EnrichmentReference("DriftingGratingLabjack")  # Required that the saccades, labjack and driftingGrating are already in file
         }))
@@ -43,7 +40,6 @@ class DriftingGratingEPhysEnrichment(Enrichment):
         self.np_barcode_fn = np_barcode_fn
         self.np_spike_clusts_fn = np_spike_clusts_fn
         self.np_spike_times_fn = np_spike_times_fn
-        self.squarewave_args = squarewave_args
         self.labjack_barcode_channel = labjack_barcode_channel
 
         for fn in [np_barcode_fn, np_spike_clusts_fn, np_spike_times_fn]:
@@ -72,33 +68,47 @@ class DriftingGratingEPhysEnrichment(Enrichment):
         return self._np_barcode
 
     def _run(self, pynwb_obj):
-        # kp = KilosortProcessor(self.spike_clusters, self.spike_timings)
-        # raw_spike_times = kp.calculate_spikes(load_precalculated)
-        # raw_firing_rates, fr_bins = kp.calculate_firingrates(SPIKE_BIN_MS, load_precalculated)
+        """
+        Grab the barcode signal, which (after decoding) is a series of pulses encoding an integer value that is then used to align the
+        labjack with the neuropixels.
+
+        """
 
         self.logger.info("Extracting and decoding neuropixels barcode..")
         np_signal = self.extract_barcode_signals(self.np_barcode, DriftingGratingEPhysEnrichment.NEUROPIXELS_SAMPLING_RATE)
+        # indices are the idxs of the first value in the 'pulsetrain' of the neuropixels barcode signal
+        # vals is the integer values
         np_barcode_indices, np_barcode_vals = self.decode_barcode_signals(np_signal, DriftingGratingEPhysEnrichment.NEUROPIXELS_SAMPLING_RATE)
 
         self.logger.info("Extracting, converting and decoding labjack barcode..")
         lj_barcode = self._get_req_val(f"DriftingGratingLabjack.{self.labjack_barcode_channel}", pynwb_obj)
+        # Need to convert the signal into transition idxs 'states'
         lj_states = np.where(np.logical_or(np.diff(lj_barcode) > +0.5, np.diff(lj_barcode) < -0.5))[0]
         lj_signal = self.extract_barcode_signals(lj_states, DriftingGratingEPhysEnrichment.LABJACK_SAMPLING_RATE)
         lj_barcode_indices, lj_barcode_vals = self.decode_barcode_signals(lj_signal, DriftingGratingEPhysEnrichment.LABJACK_SAMPLING_RATE)
 
+        # Align the two integers, and grab the common ones (sometimes the recording devices don't start/stop at the same time)
         matched_vals, common_lj, common_np = np.intersect1d(lj_barcode_vals, np_barcode_vals, return_indices=True)
 
-        spike_times_in_state_counter_time = np.interp(self.spike_times, np.array(np_barcode_indices)[common_np], matched_vals)
-        spikes_times_in_labjack_indices = np.round(np.interp(spike_times_in_state_counter_time, np.array(lj_barcode_indices)[common_lj], lj_barcode_indices)).astype(int)
+        # Align the spike times with the neuropixels integer values
+        spike_times_in_counter_time = np.interp(self.spike_times, np.array(np_barcode_indices)[common_np], matched_vals)
+        # Take the aligned spike times (in neuropixel integers) to the labjack integers, to the labjack indices
+        spikes_times_in_labjack_indices = np.round(np.interp(spike_times_in_counter_time, matched_vals, np.array(lj_barcode_indices)[common_lj])).astype(int)
 
         labjack_time = self._get_req_val(f"DriftingGratingLabjack.{self.lj_timestamps_colname}", pynwb_obj)
         spike_times_in_labjack_time = labjack_time[spikes_times_in_labjack_indices]
 
-        kp = KilosortProcessor(self.spike_clusts, spike_times_in_labjack_time)
-        # unit_spikes = kp.calculate_spikes(False)
-        unit_firingrates = kp.calculate_firingrates(1.0, False)
+        self._save_val("spike_times_in_neuropixels_time", self.spike_times, pynwb_obj)
+        self._save_val("spike_times_in_labjack_time", spike_times_in_labjack_time, pynwb_obj)
+        self._save_val("spike_clusters", self.spike_clusts, pynwb_obj)
 
-        self._save_val("asdf", [8], pynwb_obj)
+        # kilosort processor broken for low-memory machines
+        # kp = KilosortProcessor(self.spike_clusts, spike_times_in_labjack_time)
+        # kp.calculate_firingrates(1.0, False)
+        # Get spikes for a given unit optional labjack idx time window
+        # Get unit spikes around saccade (trials, unitnum, t) allow multiple input
+        # Get trial times for a saccade in labjack idxs (trials,)
+        # Normalize firing rate?
         tw = 2
         pass
 
@@ -108,26 +118,34 @@ class DriftingGratingEPhysEnrichment(Enrichment):
 
     @staticmethod
     def saved_keys() -> list[str]:
-        return ["asdf"]
+        return [
+            "spike_times_in_labjack_time",
+            "spike_times_in_neuropixels_time",
+            "spike_clusters"
+        ]
 
     @staticmethod
     def descriptions() -> dict[str, str]:
-        return {"asdf": "asdf"}
+        return {
+            "spike_times_in_labjack_time": "Kilosort spike times in terms of labjack time",
+            "spike_times_in_neuropixels_time": "Original Kilosort (not aligned) spike times in neuropixels time",
+            "spike_clusters": "Unit ID associated with the spike times"
+        }
 
     @staticmethod
     def func_list() -> list[FuncInfo]:
         return [
             #(self, funcname: str, funcdescription: str, arg_and_description_list: dict[str, str], example_str: str):
             # Form of functions should be f(nwbobj, args, kwargs) -> Any
-            FuncInfo(
-                "test",
-                "test function",
-                {
-                    "args": "list of args to pass to the function",
-                    "kwargs": "dict of keyword arguments to pass to the function"
-                },
-                "test(['myarg'], {'mykwarg': 8})"
-            )
+            # FuncInfo(
+            #     "test",
+            #     "test function",
+            #     {
+            #         "args": "list of args to pass to the function",
+            #         "kwargs": "dict of keyword arguments to pass to the function"
+            #     },
+            #     "test(['myarg'], {'mykwarg': 8})"
+            # )
         ]
 
     @staticmethod

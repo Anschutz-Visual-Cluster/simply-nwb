@@ -67,6 +67,8 @@ def ephys_align(folderpath):
         )
     ], "ephys", save_checkpoints=True, skip_existing=True).run(NWBSession(raw_nwbfile))
 
+    spike_times = sess.pull("DriftingGratingEPhys.spike_times_in_labjack_time")
+    spike_clusts = sess.pull("DriftingGratingEPhys.spike_clusters")
 
     tw = 2
 

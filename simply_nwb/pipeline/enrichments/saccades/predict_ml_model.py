@@ -166,7 +166,7 @@ class PredictSaccadeMLEnrichment(PredictSaccadesEnrichment):
     def retrain(training_datas: list[tuple[str, str, str]], save_filename: str, xkey="center_x", ykey="center_y", likeli="center_likelihood", save_to_default_model=False, generate_data=True):
         """
         Re-train a model using given a list of training data files like
-        [('saccade_times.csv', 'timestamps.csv', dlc.csv'), ...] where each (..) is it's own training dataset
+        [('saccade_times.csv', 'timestamps.txt', dlc.csv'), ...] where each (..) is it's own training dataset
 
         'saccade_times.csv' is formatted in csv like the following, this is a list of filenames that are manually
         labeled csvs used to train a model
@@ -175,7 +175,7 @@ class PredictSaccadeMLEnrichment(PredictSaccadesEnrichment):
         14148,-1.850164897,1,0
         ...
 
-        'timestamps.txt' and 'dlc.csv' are outputs from DLC, 'dlc.csv' is the eye positionss
+        'timestamps.txt' and 'dlc.csv' are outputs from DLC, 'dlc.csv' is the eye positions
         save_to_default_model is used to include the model in the package by default, writing to direction_model.py file
         which can be copied into simply_nwb/pipeline/util/models to replace the model that comes installed with the
         package. For the epoch models, you can use test/save_models_to_py.py and move those into that folder as well
