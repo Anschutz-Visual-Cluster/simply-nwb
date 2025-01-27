@@ -102,9 +102,11 @@ class DriftingGratingEPhysEnrichment(Enrichment):
         self._save_val("spike_times_in_labjack_time", spike_times_in_labjack_time, pynwb_obj)
         self._save_val("spike_clusters", self.spike_clusts, pynwb_obj)
 
-        # kilosort processor broken for low-memory machines
+        # kilosort processor broken for low-memory machines/not optimized
         # kp = KilosortProcessor(self.spike_clusts, spike_times_in_labjack_time)
         # kp.calculate_firingrates(1.0, False)
+
+        # Things that might be interesting?
         # Get spikes for a given unit optional labjack idx time window
         # Get unit spikes around saccade (trials, unitnum, t) allow multiple input
         # Get trial times for a saccade in labjack idxs (trials,)
@@ -148,20 +150,8 @@ class DriftingGratingEPhysEnrichment(Enrichment):
             # )
         ]
 
-    @staticmethod
-    def test(pynwb_obj, args, kwargs):
-        # Called by NWBSession(..).func("ExampleEnrichment.test", args, kwargs)
-        print(f"test func being called with obj {pynwb_obj} args {args} kwargs {kwargs}")
-
     # Code adapted from: https://github.com/jbhunt/myphdlib/blob/668e138548d6344a7a0c9b4873f4ab7491013f0d/myphdlib/pipeline/events.py#L104
-    def extract_barcode_signals(
-            self,
-            stateTransitionIndices,
-            samplingRate,
-            maximumWrapperPulseDuration=0.011,
-            minimumBarcodeInterval=3,
-            pad=100,
-    ):
+    def extract_barcode_signals(self, stateTransitionIndices, samplingRate, maximumWrapperPulseDuration=0.011, minimumBarcodeInterval=3, pad=100):
         self.logger.info('Extracting barcode signals')
 
         # Parse individual barcode pulse trains

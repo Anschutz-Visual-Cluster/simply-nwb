@@ -59,12 +59,7 @@ def ephys_align(folderpath):
         ),
         PredictSaccadeMLEnrichment(),  # Prebuilt models, see run_test_saccade_gui.py for example of GUI training
         DriftingGratingLabjackEnrichment(drifting, labjack, skip_sparse_noise=True, sparse_noise_pulsecount_offset=340),
-        DriftingGratingEPhysEnrichment(
-            np_barcode,
-            np_spike_clusts,
-            np_spike_times,
-            labjack_barcode_channel="y0"
-        )
+        DriftingGratingEPhysEnrichment(np_barcode, np_spike_clusts, np_spike_times, labjack_barcode_channel="y0")
     ], "ephys", save_checkpoints=True, skip_existing=True).run(NWBSession(raw_nwbfile))
 
     spike_times = sess.pull("DriftingGratingEPhys.spike_times_in_labjack_time")
