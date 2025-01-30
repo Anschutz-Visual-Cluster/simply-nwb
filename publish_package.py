@@ -24,6 +24,7 @@ def main():
     password = pypi-...<project specific token here>
     """
 
+
     pypirc_file = os.path.expanduser('~/.pypirc')
     if not os.path.exists(pypirc_file):
         # See https://packaging.python.org/en/latest/specifications/pypirc/ for help
