@@ -11,7 +11,7 @@ def main():
     [distutils]
     index-servers =
       pypi
-      graph_judge
+      simply-nwb
 
     [pypi]
     username = __token__
